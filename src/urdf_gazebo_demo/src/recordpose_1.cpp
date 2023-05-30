@@ -3,7 +3,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <string>
+#include <string.h>
 #include <iostream>
 #include <cstdio>
 #include <unistd.h>
@@ -13,18 +13,19 @@
 
 using namespace std;
 
+#define record_path "../pathrec/pathrecord1.txt"
+
 void callback_path(const geometry_msgs::PoseStamped &msg)
 {
     // outfile用法同cout,存储形式 1 2 3
     ofstream outfile;
     outfile.setf(ios::fixed, ios::floatfield);
     outfile.precision(2);
-    outfile.open("/home/lpga/demo01_ws/src/urdf_gazebo_demo/pathrec/pathrecord1.txt", std::ios::app);
+    outfile.open(record_path, std::ios::app);
     outfile << msg.pose.position.x << " " << msg.pose.position.y << endl;
     ROS_INFO("recorded_1");
     outfile.close();
 }
-
 
 int main(int argc, char **argv)
 {
