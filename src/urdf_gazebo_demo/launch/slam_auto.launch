@@ -1,0 +1,7 @@
+<!-- 集成slam和导航，机器人自动导航建图 -->
+<launch>
+    <!-- 启动SLAM节点 -->
+    <include file="$(find urdf_gazebo_demo)/launch/slam_gmapping_pr2.launch" />
+    <!-- 运行move_base节点 -->
+    <include file="$(find urdf_gazebo_demo)/launch/path.launch" />
+</launch>
