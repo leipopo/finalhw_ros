@@ -116,27 +116,27 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "move_base_goal_pub");
     ros::NodeHandle nh;
 
-    line_num_read = read_pathrecord(record_path_begin, position, line_num_read);
+    // line_num_read = read_pathrecord(record_path_begin, position, line_num_read);
 
     if (argv[1][0] == '1')
     {
         line_num_read = read_pathrecord(record_path1, position, line_num_read);
-        ROS_INFO("小车将从1通过");
+        ROS_INFO("cargothrough1");
     }
     else if (argv[1][0] == '2')
     {
         line_num_read = read_pathrecord(record_path2, position, line_num_read);
-        ROS_INFO("小车将从2通过");
+        ROS_INFO("cargothrough2");
     }
     else if (argv[1][0] == '3')
     {
         line_num_read = read_pathrecord(record_path3, position, line_num_read);
-        ROS_INFO("小车将从3通过");
+        ROS_INFO("cargothrough3");
     }
     else if (argv[1][0] == '4')
     {
         line_num_read = read_pathrecord(record_path4, position, line_num_read);
-        ROS_INFO("小车将从4通过");
+        ROS_INFO("cargothrough4");
     }
     else
     {
@@ -191,14 +191,12 @@ void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
         goal.pose.orientation.z = position[line_num_send][5];
         goal.pose.orientation.w = position[line_num_send][6];
         line_num_send++;
-        if (line_num_send >= line_num_read - 1)
+        if (line_num_send <= line_num_read)
         {
-            line_num_send = line_num_read;
+            ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
+            ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
+            ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
+            pub_goal.publish(goal);
         }
-
-        ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
-        ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
-        ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
-        pub_goal.publish(goal);
     }
 }

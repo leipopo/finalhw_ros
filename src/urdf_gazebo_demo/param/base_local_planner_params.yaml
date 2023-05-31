@@ -19,8 +19,8 @@ TrajectoryPlannerROS:
   yaw_goal_tolerance: 0.70 # about -- degrees 目标位置的角度容忍度
   xy_goal_tolerance: 0.5  # 8.5 cm 目标位置的位置容忍度
   latch_xy_goal_tolerance: false
-  path_distance_bias: 1
-  goal_distance_bias: 1
+  path_distance_bias: 0.8
+  goal_distance_bias: 0.8
   meter_scoring: true
 
   heading_lookahead: 0.325
@@ -42,12 +42,12 @@ TrajectoryPlannerROS:
 
   #与障碍物相关
   
-  min_obstacle_dist: 0.01   #与障碍的最小期望距离
-  inflation_dist: 0.5 # 障碍物周围缓冲区
+  min_obstacle_dist: 0.1   #与障碍的最小期望距离
+  inflation_dist: 1 # 障碍物周围缓冲区
  
-  max_global_plan_lookahead_dist: 2.0 #向前规划最长距离 #太大路径不平滑，太小避障和转弯时效果不好，太小还会导致小车不敢走
+  max_global_plan_lookahead_dist: 3.0 #向前规划最长距离 #太大路径不平滑，太小避障和转弯时效果不好，太小还会导致小车不敢走
  
-  weight_optimaltime: 20 # 根据转换/执行时间对轨迹进行收缩的优化权重  #很重要的一个参数，值越大小车越大胆，转弯切内道，越容易拉到最大速度，也撞死得越快
+  weight_optimaltime: 10 # 根据转换/执行时间对轨迹进行收缩的优化权重  #很重要的一个参数，值越大小车越大胆，转弯切内道，越容易拉到最大速度，也撞死得越快
 
   controller_frequency: 3.0 # movebase以 3Hz 的频率发布 运动控制命令(cmd_vel)
   planner_frequency: 1 # movebase 以 0.1Hz 规划一次新路径
