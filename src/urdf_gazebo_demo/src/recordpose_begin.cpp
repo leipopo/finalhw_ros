@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define record_path "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord1.txt"
+#define record_path "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecordbegin.txt"
 
 void writefile(const char *path, string data)
 {
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     deletefile(record_path);
 
     ros::Subscriber rec_sub = n.subscribe("/move_base_simple/goal", 25, callback_path);
-    ROS_INFO("recording_1");
+    ROS_INFO("recording_begin");
 
     ros::spin();
     return 0;

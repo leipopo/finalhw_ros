@@ -1,27 +1,56 @@
+
+
 TrajectoryPlannerROS:
 
 # Robot Configuration Parameters
-  max_vel_x: 10.0 # X 方向最大速度
-  min_vel_x: 0.1 # X 方向最小速速
+  max_vel_x: 10 # 最大x轴线速度 运动速度 0.3m/s
+  min_vel_x: 0.085 # 最小x轴线速度 运动速度 0.085m/s
+  max_vel_y: 0.0  # zero for a differential drive robot
+  min_vel_y: 0.0
+  max_vel_theta: 1.8
+  min_vel_theta: -1.8
+  min_in_place_vel_theta: 0.7
+  escape_vel: -0.125
+  acc_lim_x: 2.0
+  acc_lim_y: 0.0  # zero for a differential drive robot
+  acc_lim_theta: 3.0
 
-  max_vel_theta:  1.0 # 
-  min_vel_theta: -1.0
-  min_in_place_vel_theta: 1.0
-
-  acc_lim_x: 30.0 # X 加速限制
-  acc_lim_y: 0.0 # Y 加速限制
-  acc_lim_theta: 0.6 # 角速度加速限制
-
-# Goal Tolerance Parameters，目标公差
-  xy_goal_tolerance: 0.10
-  yaw_goal_tolerance: 0.05
-
-# Differential-drive robot configuration
-# 是否是全向移动机器人
   holonomic_robot: false
+  yaw_goal_tolerance: 0.70 # about -- degrees 目标位置的角度容忍度
+  xy_goal_tolerance: 0.5  # 8.5 cm 目标位置的位置容忍度
+  latch_xy_goal_tolerance: false
+  path_distance_bias: 1
+  goal_distance_bias: 1
+  meter_scoring: true
 
-# Forward Simulation Parameters，前进模拟参数
-  sim_time: 8
-  vx_samples: 18
-  vtheta_samples: 20
-  sim_granularity: 0.05
+  heading_lookahead: 0.325
+  heading_scoring: false
+  heading_scoring_timestep: 0.8
+  occdist_scale: 0.05
+  oscillation_reset_dist: 0.05
+  publish_cost_grid_pc: false
+  prune_plan: true
+  sim_time: 5 # 预仿真时间，计算多长时间内的情况，影响连贯性
+  sim_granularity: 0.025
+  angular_sim_granularity: 0.025
+  vx_samples: 25 # 线速度 采样点数量
+  vy_samples: 0  # zero for a differential drive robot
+  vtheta_samples: 50 # 角速度 采样点数量
+  dwa: true
+  simple_attractor: false
+
+
+  #与障碍物相关
+  
+  min_obstacle_dist: 0.01   #与障碍的最小期望距离
+  inflation_dist: 0.5 # 障碍物周围缓冲区
+ 
+  max_global_plan_lookahead_dist: 2.0 #向前规划最长距离 #太大路径不平滑，太小避障和转弯时效果不好，太小还会导致小车不敢走
+ 
+  weight_optimaltime: 20 # 根据转换/执行时间对轨迹进行收缩的优化权重  #很重要的一个参数，值越大小车越大胆，转弯切内道，越容易拉到最大速度，也撞死得越快
+
+  controller_frequency: 3.0 # movebase以 3Hz 的频率发布 运动控制命令(cmd_vel)
+  planner_frequency: 1 # movebase 以 0.1Hz 规划一次新路径
+
+  recovery_behavior_enabled: true # 启用 自救行为
+  clearing_rotation_allowed: true # 启用 自动清理障碍标记

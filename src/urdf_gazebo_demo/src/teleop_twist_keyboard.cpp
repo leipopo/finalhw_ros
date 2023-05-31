@@ -110,6 +110,9 @@ int main(int argc, char** argv)
   printf("%s", msg);
   printf("\rCurrent: speed %f\tturn %f | Awaiting command...\r", speed, turn);
 
+  double start_time = ros::Time::now().toSec();
+  
+
   while(true){
 
     // Get the pressed key
@@ -149,6 +152,10 @@ int main(int argc, char** argv)
       if (key == '\x03')
       {
         printf("\n stop !\n");
+        double end_time = ros::Time::now().toSec();
+        ROS_INFO("start time: %f", start_time);
+        ROS_INFO("end time: %f", end_time);
+        ROS_INFO("total time: %f", end_time - start_time);
         break;
       }
 

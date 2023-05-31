@@ -6,7 +6,12 @@
 
 using namespace std;
 
-#define record_path "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord1.txt"
+#define record_path_begin "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecordbegin.txt"
+#define record_path1 "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord1.txt"
+#define record_path2 "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord2.txt"
+#define record_path3 "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord3.txt"
+#define record_path4 "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord4.txt"
+#define record_path_end "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecordend.txt"
 
 void resultCallback(const move_base_msgs::MoveBaseActionResult &msg);
 
@@ -44,20 +49,18 @@ void string2char(string str, char *ch)
     ch[i] = '\0';
 }
 
-float position[50][7];
+float position[100][7];
 int line_num_read = 0, line_num_send = 0;
 int flag = 0;
 
-int main(int argc, char **argv)
+int read_pathrecord(const char *path, float position[][7], int linenumread)
 {
-    ros::init(argc, argv, "move_base_goal_pub");
-    ros::NodeHandle nh;
-
     fstream file;
     string line;
     int begin, end;
+    int linenum = linenumread;
 
-    file.open(record_path, ios::in);
+    file.open(path, ios::in);
 
     while (!file.eof())
     {
@@ -94,19 +97,53 @@ int main(int argc, char **argv)
         end = line.find_first_of(';', begin);
         string qw = line.substr(begin + 1, end - begin - 1);
 
-        position[line_num_read][0] = atof(x.c_str());
-        position[line_num_read][1] = atof(y.c_str());
-        position[line_num_read][2] = atof(z.c_str());
-        position[line_num_read][3] = atof(qx.c_str());
-        position[line_num_read][4] = atof(qy.c_str());
-        position[line_num_read][5] = atof(qz.c_str());
-        position[line_num_read][6] = atof(qw.c_str());
-        ROS_INFO("xyz: %f, %f, %f", position[line_num_read][0], position[line_num_read][1], position[line_num_read][2]);
-        ROS_INFO("q: %f, %f, %f, %f", position[line_num_read][3], position[line_num_read][4], position[line_num_read][5], position[line_num_read][6]);
-        line_num_read++;
-        ROS_INFO("line_num_read: %d", line_num_read);
+        position[linenumread][0] = atof(x.c_str());
+        position[linenumread][1] = atof(y.c_str());
+        position[linenumread][2] = atof(z.c_str());
+        position[linenumread][3] = atof(qx.c_str());
+        position[linenumread][4] = atof(qy.c_str());
+        position[linenumread][5] = atof(qz.c_str());
+        position[linenumread][6] = atof(qw.c_str());
+
+        linenumread++;
     }
     file.close();
+    return linenumread;
+}
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "move_base_goal_pub");
+    ros::NodeHandle nh;
+
+    line_num_read = read_pathrecord(record_path_begin, position, line_num_read);
+
+    if (argv[1][0] == '1')
+    {
+        line_num_read = read_pathrecord(record_path1, position, line_num_read);
+        ROS_INFO("小车将从1通过");
+    }
+    else if (argv[1][0] == '2')
+    {
+        line_num_read = read_pathrecord(record_path2, position, line_num_read);
+        ROS_INFO("小车将从2通过");
+    }
+    else if (argv[1][0] == '3')
+    {
+        line_num_read = read_pathrecord(record_path3, position, line_num_read);
+        ROS_INFO("小车将从3通过");
+    }
+    else if (argv[1][0] == '4')
+    {
+        line_num_read = read_pathrecord(record_path4, position, line_num_read);
+        ROS_INFO("小车将从4通过");
+    }
+    else
+    {
+        ROS_INFO("wrong input");
+    }
+    line_num_read = read_pathrecord(record_path_end, position, line_num_read);
+
     line_num_send = 0;
 
     ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
@@ -123,7 +160,7 @@ int main(int argc, char **argv)
     line_num_send++;
     ros::Subscriber sub_result = nh.subscribe("/move_base/result", 1000, &resultCallback);
 
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(500);
     while (!flag)
     {
         pub_goal.publish(goal);

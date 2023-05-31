@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define record_path "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecord4.txt"
+#define record_path "/home/lpga/finalhw_ros/src/urdf_gazebo_demo/pathrec/pathrecordend.txt"
 
 void writefile(const char *path, string data)
 {
@@ -57,7 +57,7 @@ void callback_path(const geometry_msgs::PoseStamped &msg)
     date+= to_string(msg.pose.position.z);
     date+="; ";
     date+="qx=";
-    date+= to_string(msg.pose.orientation.x);
+    date+= to_string(msg.pose.orientation.x );
     date+="; ";
     date+="qy=";
     date+= to_string(msg.pose.orientation.y);
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     deletefile(record_path);
 
     ros::Subscriber rec_sub = n.subscribe("/move_base_simple/goal", 25, callback_path);
-    ROS_INFO("recording_4");
+    ROS_INFO("recording_end");
 
     ros::spin();
     return 0;

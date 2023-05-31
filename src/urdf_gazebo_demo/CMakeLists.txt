@@ -207,20 +207,17 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-# add_executable(teleop_twist_keyboard src/teleop_twist_keyboard.cpp)
-# target_link_libraries(teleop_twist_keyboard ${catkin_LIBRARIES})
+add_executable(teleop_twist_keyboard src/teleop_twist_keyboard.cpp)
+target_link_libraries(teleop_twist_keyboard ${catkin_LIBRARIES})
 
-add_executable(pathrecord_1 src/recordpose_1.cpp)
-target_link_libraries(pathrecord_1 ${catkin_LIBRARIES})
+add_executable(pathrecord_begin src/recordpose_begin.cpp)
+target_link_libraries(pathrecord_begin ${catkin_LIBRARIES})
 
-add_executable(pathrecord_2 src/recordpose_2.cpp)
-target_link_libraries(pathrecord_2 ${catkin_LIBRARIES})
+add_executable(pathrecord_mid src/recordpose_mid.cpp)
+target_link_libraries(pathrecord_mid ${catkin_LIBRARIES})
 
-add_executable(pathrecord_3 src/recordpose_3.cpp)
-target_link_libraries(pathrecord_3 ${catkin_LIBRARIES})
-
-add_executable(pathrecord_4 src/recordpose_4.cpp)
-target_link_libraries(pathrecord_4 ${catkin_LIBRARIES})
+add_executable(pathrecord_end src/recordpose_end.cpp)
+target_link_libraries(pathrecord_end ${catkin_LIBRARIES})
 
 add_executable(posepublish src/posepub.cpp)
 target_link_libraries(posepublish ${catkin_LIBRARIES})
