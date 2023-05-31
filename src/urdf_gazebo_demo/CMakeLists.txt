@@ -222,3 +222,6 @@ target_link_libraries(pathrecord_3 ${catkin_LIBRARIES})
 add_executable(pathrecord_4 src/recordpose_4.cpp)
 target_link_libraries(pathrecord_4 ${catkin_LIBRARIES})
 
+add_executable(posepublish src/posepub.cpp)
+target_link_libraries(posepublish ${catkin_LIBRARIES})
+
