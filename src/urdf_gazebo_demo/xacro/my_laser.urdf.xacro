@@ -61,7 +61,7 @@
                 <cylinder radius="${laser_radius}" length="${laser_length}" />
             </geometry>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
-            <material name="Black" />
+            <material name="red" />
         </visual>
         <collision>
             <geometry>

@@ -116,7 +116,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "move_base_goal_pub");
     ros::NodeHandle nh;
 
-    // line_num_read = read_pathrecord(record_path_begin, position, line_num_read);
+    line_num_read = read_pathrecord(record_path_begin, position, line_num_read);
 
     if (argv[1][0] == '1')
     {
