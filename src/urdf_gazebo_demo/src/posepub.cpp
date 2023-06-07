@@ -198,5 +198,10 @@ void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
             ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
             pub_goal.publish(goal);
         }
+        else
+        {
+            ROS_INFO("finish");
+            ros::shutdown();
+        }
     }
 }
