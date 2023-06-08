@@ -7,7 +7,7 @@
 using namespace std;
 
 #define img_path "/home/lpga/finalhw_ros/src/numrec/img"
-#define svm_path "/home/lpga/finalhw_ros/src/numrec/svm/svm.txt"
+#define traincfg_path "/home/lpga/finalhw_ros/src/numrec/traindata/traincfg.txt"
 
 void writefile(const char *path, string data)
 {
@@ -43,14 +43,14 @@ int main(int argc, char **argv)
     cout << "each " << numofeachimg << endl;
 
     string Img_Path = img_path;
-    deletefile(svm_path);
+    deletefile(traincfg_path);
     for (int i = 1; i < numofnums+1; i++)
     {
         for (int j = 0; j < numofeachimg; j++)
         {
             string imgpath = Img_Path + "/num" + to_string(i) + "-" + to_string(j) + ".jpg" + "\n";
-            writefile(svm_path, imgpath);
-            writefile(svm_path, to_string(i) + "\n");
+            writefile(traincfg_path, imgpath);
+            writefile(traincfg_path, to_string(i) + "\n");
         }
     }
 

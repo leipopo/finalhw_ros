@@ -14,8 +14,9 @@ using namespace cv;
 using namespace std;
 
 #define img_path "/home/lpga/finalhw_ros/src/numrec/img"
-#define svm_path "/home/lpga/finalhw_ros/src/numrec/svm/svm.txt"
-#define svm_path_result "/home/lpga/finalhw_ros/src/numrec/svm/svm_result.txt"
+#define traincfg_path "/home/lpga/finalhw_ros/src/numrec/traindata/traincfg.txt"
+#define svm_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/svm_result.txt"
+#define knn_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/knn_result.xml"
 
 void writefile(const char *path, string data)
 {
@@ -50,7 +51,7 @@ int main(int argc, const char **argv)
     int nline = 1;
     string imgpath;
     ifstream svmfile;
-    svmfile.open(svm_path, ios::in);
+    svmfile.open(traincfg_path, ios::in);
     while (!svmfile.eof())
     {
         if (nline % 2 == 1)
@@ -119,15 +120,33 @@ int main(int argc, const char **argv)
         cout << "label " << label[i] << endl;
         fea.clear();
     }
-    
-    
-    Ptr<ml::SVM> svm = ml::SVM::create();
-    svm->setType(ml::SVM::C_SVC);
-    svm->setKernel(ml::SVM::LINEAR);
-    svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
-    svm->train(datamat, ml::ROW_SAMPLE, labelmat);
-    svm->save(svm_path_result);
-    cout << "svm trained" << endl;
+
+    if (argv[1][0] == 's')
+    {
+        deletefile(svm_path_result);
+        Ptr<ml::SVM> svm = ml::SVM::create();
+        svm->setType(ml::SVM::C_SVC);
+        svm->setKernel(ml::SVM::LINEAR);
+        svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
+        svm->train(datamat, ml::ROW_SAMPLE, labelmat);
+        svm->save(svm_path_result);
+        cout << "svm trained" << endl;
+    }
+    else if (argv[1][0] == 'k')
+    {
+        deletefile(knn_path_result);
+        Ptr<ml::KNearest> knn = ml::KNearest::create();
+        knn->setDefaultK(10);
+        knn->setIsClassifier(true);
+        knn->train(datamat, ml::ROW_SAMPLE, labelmat);
+        knn->save(knn_path_result);
+        cout << "knn trained" << endl;
+    }
+    else
+    {
+        cout << "wrong input" << endl;
+    }
+
 
     waitKey(0);
     return 0;
