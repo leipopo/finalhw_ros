@@ -1,22 +1,4 @@
-#include "opencv4/opencv2/opencv.hpp"
-#include "opencv4/opencv2/core.hpp"
-#include "opencv4/opencv2/highgui.hpp"
-#include "opencv4/opencv2/imgproc.hpp"
-#include "opencv4/opencv2/ml.hpp"
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <stdio.h>
-
-using namespace cv;
-using namespace std;
-
-#define img_path "/home/lpga/finalhw_ros/src/numrec/img"
-#define traincfg_path "/home/lpga/finalhw_ros/src/numrec/traindata/traincfg.txt"
-#define svm_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/svm_result.txt"
-#define knn_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/knn_result.xml"
+#include "numrec.hpp"
 
 void writefile(const char *path, string data)
 {
@@ -84,7 +66,7 @@ int main(int argc, const char **argv)
         // imshow("blur_img", blur_img);
 
         Mat thresh_img;
-        threshold(blur_img, thresh_img, 36, 255, THRESH_BINARY_INV ); // 二值化
+        threshold(blur_img, thresh_img, thresh_value, 255, THRESH_BINARY_INV ); // 二值化
         // imshow("thresh_img", thresh_img);
 
         vector<vector<Point>> contours;                                                                 // 轮廓

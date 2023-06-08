@@ -8,6 +8,10 @@
 1
 /home/lpga/finalhw_ros/src/numrec/img/num1-4.jpg
 1
+/home/lpga/finalhw_ros/src/numrec/img/num1-5.jpg
+1
+/home/lpga/finalhw_ros/src/numrec/img/num1-6.jpg
+1
 /home/lpga/finalhw_ros/src/numrec/img/num2-0.jpg
 2
 /home/lpga/finalhw_ros/src/numrec/img/num2-1.jpg
@@ -17,6 +21,10 @@
 /home/lpga/finalhw_ros/src/numrec/img/num2-3.jpg
 2
 /home/lpga/finalhw_ros/src/numrec/img/num2-4.jpg
+2
+/home/lpga/finalhw_ros/src/numrec/img/num2-5.jpg
+2
+/home/lpga/finalhw_ros/src/numrec/img/num2-6.jpg
 2
 /home/lpga/finalhw_ros/src/numrec/img/num3-0.jpg
 3
@@ -28,6 +36,10 @@
 3
 /home/lpga/finalhw_ros/src/numrec/img/num3-4.jpg
 3
+/home/lpga/finalhw_ros/src/numrec/img/num3-5.jpg
+3
+/home/lpga/finalhw_ros/src/numrec/img/num3-6.jpg
+3
 /home/lpga/finalhw_ros/src/numrec/img/num4-0.jpg
 4
 /home/lpga/finalhw_ros/src/numrec/img/num4-1.jpg
@@ -37,4 +49,8 @@
 /home/lpga/finalhw_ros/src/numrec/img/num4-3.jpg
 4
 /home/lpga/finalhw_ros/src/numrec/img/num4-4.jpg
+4
+/home/lpga/finalhw_ros/src/numrec/img/num4-5.jpg
+4
+/home/lpga/finalhw_ros/src/numrec/img/num4-6.jpg
 4
