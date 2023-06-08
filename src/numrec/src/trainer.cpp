@@ -77,12 +77,14 @@ int main(int argc, const char **argv)
         Mat img = imread(path[i], 0);
         Mat thresh_img;
         threshold(img, thresh_img, 0, 255, THRESH_BINARY_INV | THRESH_OTSU);
+        imshow("thresh_img", thresh_img);
         vector<vector<Point>> contours;
         vector<Vec4i> hierarchy;
         findContours(thresh_img, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0)); //
         Mat mask = Mat::zeros(thresh_img.size(), CV_8UC1);
         drawContours(mask, contours, -1, Scalar(255), -1); // 绘制所有轮廓
         imshow("mask", mask);
+        waitKey(0);
         vector<int> fea;
         for (int j = 0; j < contours.size(); j++)
         {
@@ -126,5 +128,7 @@ int main(int argc, const char **argv)
     svm->train(datamat, ml::ROW_SAMPLE, labelmat);
     svm->save(svm_path_result);
     cout << "svm trained" << endl;
+
+    waitKey(0);
     return 0;
 }
