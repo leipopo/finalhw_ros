@@ -217,3 +217,6 @@ target_link_libraries(trainer ${catkin_LIBRARIES})
 
 add_executable(generate_cfg src/cfgfilegen.cpp)
 target_link_libraries(generate_cfg ${catkin_LIBRARIES})
+
+add_executable(num_rec src/numrec.cpp)
+target_link_libraries(num_rec ${catkin_LIBRARIES})

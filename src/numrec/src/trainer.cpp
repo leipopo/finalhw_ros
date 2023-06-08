@@ -50,74 +50,67 @@ int main(int argc, const char **argv)
     vector<int> label;
     int nline = 1;
     string imgpath;
-    ifstream svmfile;
-    svmfile.open(traincfg_path, ios::in);
-    while (!svmfile.eof())
+    ifstream cfgfile;
+    cfgfile.open(traincfg_path, ios::in);
+    while (!cfgfile.eof())
     {
         if (nline % 2 == 1)
         {
-            svmfile >> imgpath;
+            cfgfile >> imgpath;
             path.push_back(imgpath);
         }
         else
         {
             int num;
-            svmfile >> num;
+            cfgfile >> num;
             label.push_back(num);
         }
         nline++;
     }
     cout << "total " << nline / 2 << endl;
-    svmfile.close();
+    cfgfile.close();
 
     Mat labelmat = Mat(label.size(), 1, CV_32SC1);
     Mat datamat;
     int imgnum = path.size();
+    cout << "imgnum " << imgnum << endl;
     for (int i = 0; i < imgnum; i++)
     {
-        Mat img = imread(path[i], 0);
+        Mat gray_img = imread(path[i], IMREAD_GRAYSCALE); // 灰度图
+        imshow("gray_img", gray_img);
+
+        Mat blur_img;
+        blur(gray_img, blur_img, Size(3, 3)); // 模糊
+        // imshow("blur_img", blur_img);
+
         Mat thresh_img;
-        threshold(img, thresh_img, 0, 255, THRESH_BINARY_INV | THRESH_OTSU);
-        imshow("thresh_img", thresh_img);
-        vector<vector<Point>> contours;
-        vector<Vec4i> hierarchy;
-        findContours(thresh_img, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0)); //
-        Mat mask = Mat::zeros(thresh_img.size(), CV_8UC1);
-        drawContours(mask, contours, -1, Scalar(255), -1); // 绘制所有轮廓
-        imshow("mask", mask);
-        waitKey(0);
+        threshold(blur_img, thresh_img, 36, 255, THRESH_BINARY_INV ); // 二值化
+        // imshow("thresh_img", thresh_img);
+
+        vector<vector<Point>> contours;                                                                 // 轮廓
+        vector<Vec4i> hierarchy;                                                                        // 轮廓的结构信息
+        findContours(thresh_img, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0)); // 查找轮廓
+
         vector<int> fea;
-        for (int j = 0; j < contours.size(); j++)
-        {
-            Rect rect = boundingRect(contours[j]);
-            Mat roi = img(rect);
-            Mat roi_resized;
-            resize(roi, roi_resized, Size(180, 210), 0, 0, INTER_AREA);
-            int g_dConArea = contourArea(contours[j]);
-            if (g_dConArea > 0)
-            {
-                cout << "用轮廓面积计算函数计算出来的第" << j << "个轮廓的面积为： " << g_dConArea << endl;
-                int value1 = 0;
-                for (int k = 0; k < roi_resized.rows; k++)
-                {
-                    for (int l = 0; l < 6; l++)
-                    {
-                        value1 += roi_resized.at<uchar>(k, l);
-                    }
-                }
-                cout << "像素值之和 " << value1 << endl;
-                fea.push_back(value1);
-            }
-        }
-        cout << "feasize " << fea.size() << endl;
+
+        Rect rect = boundingRect(contours[0]);
+        Mat roi = thresh_img(rect);
+        rectangle(thresh_img, rect, Scalar(255, 255, 255), 1, 8, 0);
+        imshow("thresh_img_rect", thresh_img);
+        Mat roi_resized;
+        resize(roi, roi_resized, Size(180, 210), 0, 0, INTER_AREA);
+        imshow("roi_resized", roi_resized);
+        waitKey(0);
+        fea = roi_resized.reshape(1, 1);
+        cout << "fea " << fea.size() << endl;
         if (i == 0)
             datamat = Mat::zeros(imgnum, fea.size(), CV_32FC1);
-        for (int j = 0; j < fea.size(); j++)
+        for (int k = 0; k < fea.size(); k++)
         {
-            datamat.at<float>(i, j) = fea[j];
+            datamat.at<float>(i, k) = fea[k];
+            // cout<<fea.size()<<endl;
         }
         labelmat.at<int>(i, 0) = label[i];
-        cout << "label " << label[i] << endl;
         fea.clear();
     }
 
@@ -134,6 +127,7 @@ int main(int argc, const char **argv)
     }
     else if (argv[1][0] == 'k')
     {
+        
         deletefile(knn_path_result);
         Ptr<ml::KNearest> knn = ml::KNearest::create();
         knn->setDefaultK(10);
@@ -147,7 +141,6 @@ int main(int argc, const char **argv)
         cout << "wrong input" << endl;
     }
 
-
-    waitKey(0);
+    // waitKey(0);
     return 0;
 }
