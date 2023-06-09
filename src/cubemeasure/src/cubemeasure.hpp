@@ -17,24 +17,5 @@
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
 
-#define img_path "/home/lpga/finalhw_ros/src/numrec/img"
-#define traincfg_path "/home/lpga/finalhw_ros/src/numrec/traindata/traincfg.txt"
-#define svm_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/svm_result.txt"
-#define knn_path_result "/home/lpga/finalhw_ros/src/numrec/traindata/knn_result.xml"
-
 using namespace cv;
 using namespace std;
-
-typedef struct
-{
-    Mat img;
-    string result_str;
-} numrec_result;
-
-#define thresh_value 2
-
-#define imgx 60
-#define imgy 70
-
-#define Kvalue 3
-

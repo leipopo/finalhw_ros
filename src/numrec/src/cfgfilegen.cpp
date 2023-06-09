@@ -1,13 +1,4 @@
-#include <fstream>
-#include <string>
-#include <iostream>
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-
-using namespace std;
-
-#define img_path "/home/lpga/finalhw_ros/src/numrec/img"
-#define traincfg_path "/home/lpga/finalhw_ros/src/numrec/traindata/traincfg.txt"
+#include "numrec.hpp"
 
 void writefile(const char *path, string data)
 {
