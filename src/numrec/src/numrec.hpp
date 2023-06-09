@@ -31,4 +31,9 @@ typedef struct
     string result_str;
 } numrec_result;
 
-int thresh_value = 4;
+#define thresh_value 4
+
+#define imgx 60
+#define imgy 70
+
+#define Kvalue 3

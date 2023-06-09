@@ -77,10 +77,10 @@ int main(int argc, const char **argv)
 
         Rect rect = boundingRect(contours[0]);
         Mat roi = thresh_img(rect);
-        rectangle(thresh_img, rect, Scalar(255, 255, 255), 1, 8, 0);
+        rectangle(thresh_img, rect, Scalar(255, 0, 255), 1, 8, 0);
         imshow("thresh_img_rect", thresh_img);
         Mat roi_resized;
-        resize(roi, roi_resized, Size(180, 210), 0, 0, INTER_AREA);
+        resize(roi, roi_resized, Size(imgx, imgy), 0, 0, INTER_AREA);
         imshow("roi_resized", roi_resized);
         waitKey(0);
         fea = roi_resized.reshape(1, 1);
@@ -112,7 +112,7 @@ int main(int argc, const char **argv)
         
         deletefile(knn_path_result);
         Ptr<ml::KNearest> knn = ml::KNearest::create();
-        knn->setDefaultK(10);
+        knn->setDefaultK(Kvalue);
         knn->setIsClassifier(true);
         knn->train(datamat, ml::ROW_SAMPLE, labelmat);
         knn->save(knn_path_result);
