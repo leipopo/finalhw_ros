@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "move_base_goal_pub");
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("/camera/image_raw", 1, imageCallback);
+    ros::Subscriber sub = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
     ros::Publisher pub = nh.advertise<std_msgs::String>("numrec_result_str", 1);
 
     namedWindow(WINDOW);

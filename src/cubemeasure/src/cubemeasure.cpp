@@ -2,23 +2,21 @@
 
 #define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
 
-Mat raw_img = Mat::zeros(480, 640, CV_16UC1);
-Mat raw_depth = Mat::zeros(480, 640, CV_16UC1);
+Mat raw_img;
+Mat raw_depth;
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-        // cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);
-        raw_img = cv_ptr->image;
-        // imshow("raw_img", raw_img);
-        // waitKey(1);
+        raw_img = cv_bridge::toCvCopy(msg, "bgr8")->image;
+        imshow("raw_img", raw_img);
+        // waitKey(0);
     }
     catch (cv_bridge::Exception &e)
     {
-        ROS_ERROR("Could not convert from '%s' to 'TYPE_16UC1'.", msg->encoding.c_str());
+        ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
     }
 }
 
@@ -27,19 +25,17 @@ void depthCallback(const sensor_msgs::ImageConstPtr &msg)
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-        // cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);
-        raw_depth = cv_ptr->image;
-        // imshow("raw_depth", raw_depth);
-        // waitKey(1);
+        raw_depth = cv_bridge::toCvCopy(msg, "mono8")->image;
+        imshow("raw_depth", raw_depth);
+        // waitKey(0);
     }
     catch (cv_bridge::Exception &e)
     {
-        ROS_ERROR("Could not convert from '%s' to 'TYPE_16UC1'.", msg->encoding.c_str());
+        ROS_ERROR("Could not convert from '%s' to 'mono16'.", msg->encoding.c_str());
     }
 }
 
-void predispose(InputArray rawimg, OutputArray outimg, int border_value , int thresh_max, int thresh_min)
+void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min)
 {
     Mat grayimg;
     cvtColor(rawimg, grayimg, COLOR_BGR2GRAY);
@@ -53,11 +49,9 @@ void predispose(InputArray rawimg, OutputArray outimg, int border_value , int th
     erode(threshimg, threshimg, Mat(), Point(-1, -1), border_value);
     imshow("threshimg", threshimg);
     dilate(threshimg, outimg, Mat(), Point(-1, -1), border_value);
- 
+
     // blur(threshimg, threshimg, Size(blur_size, blur_size));
     // threshold(threshimg, outimg, 127, 255, THRESH_BINARY);
-
-    
 
     imshow("outimg", outimg);
 }
@@ -216,7 +210,7 @@ float cubemeasure(Mat rawimg, Mat depimg)
     line(rawimg, upcontours[0], upcontours[upcontours.size() - 1], Scalar(255, 255, 255), 1);
     line(rawimg, downcontours[0], downcontours[downcontours.size() - 1], Scalar(255, 255, 255), 1);
 
-    float dist= (p2l_distance(upcontours[0], upcontours[upcontours.size() - 1], downcontours[0]) + p2l_distance(upcontours[0], upcontours[upcontours.size() - 1], downcontours[downcontours.size() - 1])) / 2;
+    float dist = (p2l_distance(upcontours[0], upcontours[upcontours.size() - 1], downcontours[0]) + p2l_distance(upcontours[0], upcontours[upcontours.size() - 1], downcontours[downcontours.size() - 1])) / 2;
     cout << "dist: " << fabsf(dist) << endl;
 
     // rectangle(rawimg, srinkrect, Scalar(0, 255, 0), 2);
@@ -262,22 +256,35 @@ float cubemeasure(Mat rawimg, Mat depimg)
     return 0;
 }
 
-int main(int argc, char **argv)
-{
-
-    float length = cubemeasure(raw_img, raw_depth);
-    waitKey(0);
-    return 0;
-}
-
 // int main(int argc, char **argv)
 // {
-//     ros::init(argc, argv, "cubemeasure");
-//     ros::NodeHandle nh;
-//     ros::Subscriber sub = nh.subscribe("/camera/color/image_raw", 1, imageCallback);
-//     ros::Subscriber sub = nh.subscribe("/camera/depth/image_raw", 1, depthCallback);
-//     ros::Publisher pub = nh.advertise<std_msgs::String>("cubemeasure_result_str", 1);
-//     ros::Rate loop_rate(10);
 
+//     float length = cubemeasure(raw_img, raw_depth);
+//     waitKey(0);
 //     return 0;
 // }
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "cubemeasure");
+    ros::NodeHandle nh;
+    ros::Subscriber sub_rgb = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
+    ros::Subscriber sub_depth = nh.subscribe("/camera2/depth/image_raw", 1, depthCallback);
+    ros::Publisher pub = nh.advertise<std_msgs::String>("cubemeasure_result_str", 1);
+    ros::Rate loop_rate(10);
+    while (ros::ok())
+    {
+        ros::spinOnce();
+        // float length = cubemeasure(raw_img, raw_depth);
+        // imshow("raw_img", raw_img);
+        // imshow("raw_depth", raw_depth);
+        std_msgs::String msg;
+        std::stringstream ss;
+        // ss << length;
+        msg.data = ss.str();
+        pub.publish(msg);
+        loop_rate.sleep();
+    }
+
+    return 0;
+}
