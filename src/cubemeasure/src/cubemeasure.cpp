@@ -42,9 +42,8 @@ void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thr
     threshold(grayimg, threshimg_min, thresh_min, 255, THRESH_BINARY);
     bitwise_and(threshimg_max, threshimg_min, threshimg);
     erode(threshimg, threshimg, Mat(), Point(-1, -1), border_value);
-    // imshow("threshimg", threshimg);
+    imshow("threshimg", threshimg);
     dilate(threshimg, outimg, Mat(), Point(-1, -1), border_value);
-    // filter2D(threshimg, outimg, -1, Mat(), Point(-1, -1), border_value);
 
     // imshow("outimg", outimg);
 }
@@ -279,23 +278,47 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             {
                 if (abs(upcontours[i].x - downcontours[j].x) < 5)
                 {
-                    if ((abs(upcontours[i].y - aver_up_y) < 20)&&(abs(downcontours[j].y - aver_down_y) < 20))
+                    if ((abs(upcontours[i].y - aver_up_y) < 20) && (abs(downcontours[j].y - aver_down_y) < 20))
                     {
-                    if (farthestpair.empty())
-                    {
-                        farthestpair.push_back(upcontours[i]);
-                        farthestpair.push_back(downcontours[j]);
-                    }
-                    else if (closestpair.empty())
-                    {
-                        closestpair.push_back(upcontours[i]);
-                        closestpair.push_back(downcontours[j]);
-                    }
+                        if (farthestpair.empty())
+                        {
+                            farthestpair.push_back(upcontours[i]);
+                            farthestpair.push_back(downcontours[j]);
+                        }
+                        else if (closestpair.empty())
+                        {
+                            closestpair.push_back(upcontours[i]);
+                            closestpair.push_back(downcontours[j]);
+                        }
                     }
                 }
             }
         }
     }
+}
+
+float getdepth(Mat depimg, Point tarpoint, int size)
+{
+    cout << "tarpoint: " << tarpoint << endl;
+    Rect rect(MIN(MAX(0, tarpoint.x - size / 2), depimg.cols-size), MIN(MAX(0, tarpoint.y - size / 2), depimg.rows-size), size, size);
+    Mat roi = depimg(rect);
+    float minValue = numeric_limits<double>::max();
+    for (int i = 0; i < roi.rows; i++)
+    {
+        cout<<"roi: "<<roi<<endl;
+        for (int j = 0; j < roi.cols; j++)
+        {
+            float value = roi.at<float>(i, j);
+            if (value > 0 && value < minValue)
+            {
+                minValue = value;
+            }
+        }
+    }
+
+    float depth = minValue;
+
+    return depth;
 }
 
 float cubemeasure(Mat rawimg, Mat depimg)
@@ -304,8 +327,23 @@ float cubemeasure(Mat rawimg, Mat depimg)
     // rawimg.resize(640, 480);
     // imshow("rawimg", rawimg);
     // waitKey(1);
+
+    vector<Point> farthestpair;
+    vector<Point> closestpair;
+    float depth_farpair[2] = {0};
+    float depth_closepair[2] = {0};
+
     Mat threshimg;
-    predispose(rawimg, threshimg, 3, 35, 28);
+
+    namedWindow("threshimg", WINDOW_NORMAL);
+    createTrackbar("thresh_max", "threshimg", 0, 255, NULL);
+    createTrackbar("thresh_min", "threshimg", 0, 255, NULL);
+    setTrackbarPos("thresh_max", "threshimg", 37);
+    setTrackbarPos("thresh_min", "threshimg", 28);
+    int thresh_max = getTrackbarPos("thresh_max", "threshimg");
+    int thresh_min = getTrackbarPos("thresh_min", "threshimg");
+    
+    predispose(rawimg, threshimg, 3, thresh_max, thresh_min);
 
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
@@ -330,25 +368,38 @@ float cubemeasure(Mat rawimg, Mat depimg)
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
-        vector<Point> farthestpair;
-        vector<Point> closestpair;
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
         if (!farthestpair.empty())
         {
             line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
+            cout << "farthestpair: " << farthestpair << endl;
+            depth_farpair[0] = getdepth(depimg, farthestpair[0], 4);
+            depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
+            cout << "depth_farpair[0]: " << depth_farpair[0] << endl;
+            cout << "depth_farpair[1]: " << depth_farpair[1] << endl;
         }
         if (!closestpair.empty())
         {
             line(rawimg, closestpair[0], closestpair[1], Scalar(255, 255, 255), 2);
+            depth_closepair[0] = getdepth(depimg, closestpair[0], 4);
+            depth_closepair[1] = getdepth(depimg, closestpair[1], 4);
         }
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
             return 0;
         }
+        else if (farthestpair.empty())
+        {
+            cout << "no farthestpair" << endl;
+        }
+        else if (closestpair.empty())
+        {
+            cout << "no closestpair" << endl;
+        }
 
         float dist = 10;
-        cout << "dist: " << fabsf(dist) << endl;
+        // cout << "dist: " << fabsf(dist) << endl;
         return fabsf(dist);
     }
 }
