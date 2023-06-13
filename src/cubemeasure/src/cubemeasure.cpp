@@ -155,6 +155,12 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
 
     for (int i = 0; i < contours.size(); i++)
     {
+        if (abs(contours[i].y - rect.y - rect.height / 2) < 20)
+        {
+            contours.erase(contours.begin() + i);
+            i--;
+            continue;
+        }
         if (contours[i].y < rect.y + rect.height / 2)
         {
             upcontours.push_back(contours[i]);
@@ -243,25 +249,27 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
         // cout << "heightestupcontour.x: " << heightestupcontour.x << endl;
         if (abs(downcontours[i].x - heightestupcontour.x) < 20)
         {
-            if (abs(downcontours[i].y - aver_down_y) < 10)
-            {
-                downcontours[i].x = heightestupcontour.x;
-                farthestpair.push_back(heightestupcontour);
-                farthestpair.push_back(downcontours[i]);
-                downcontours.erase(downcontours.begin() + i);
-                i--;
-            }
+            // if (abs(downcontours[i].y - aver_down_y) < 10)
+            // {
+            downcontours[i].x = heightestupcontour.x;
+            farthestpair.push_back(heightestupcontour);
+            farthestpair.push_back(downcontours[i]);
+            downcontours.erase(downcontours.begin() + i);
+            i--;
+            cout << "farthestpair is " << farthestpair << endl;
+            // }
         }
 
         if (abs(downcontours[i].x - lowestupcontour.x) < 5)
         {
-            if (abs(downcontours[i].y - aver_down_y) < 10)
-            {
-                closestpair.push_back(lowestupcontour);
-                closestpair.push_back(downcontours[i]);
-                downcontours.erase(downcontours.begin() + i);
-                i--;
-            }
+            // if (abs(downcontours[i].y - aver_down_y) < 10)
+            // {
+            closestpair.push_back(lowestupcontour);
+            closestpair.push_back(downcontours[i]);
+            downcontours.erase(downcontours.begin() + i);
+            i--;
+            cout << "closestpair is " << closestpair << endl;
+            // }
         }
     }
 
@@ -299,13 +307,11 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
 
 float getdepth(Mat depimg, Point tarpoint, int size)
 {
-    cout << "tarpoint: " << tarpoint << endl;
-    Rect rect(MIN(MAX(0, tarpoint.x - size / 2), depimg.cols-size), MIN(MAX(0, tarpoint.y - size / 2), depimg.rows-size), size, size);
+    Rect rect(MIN(MAX(0, tarpoint.x - size / 2), depimg.cols - size), MIN(MAX(0, tarpoint.y - size / 2), depimg.rows - size), size, size);
     Mat roi = depimg(rect);
     float minValue = numeric_limits<double>::max();
     for (int i = 0; i < roi.rows; i++)
     {
-        cout<<"roi: "<<roi<<endl;
         for (int j = 0; j < roi.cols; j++)
         {
             float value = roi.at<float>(i, j);
@@ -338,11 +344,18 @@ float cubemeasure(Mat rawimg, Mat depimg)
     namedWindow("threshimg", WINDOW_NORMAL);
     createTrackbar("thresh_max", "threshimg", 0, 255, NULL);
     createTrackbar("thresh_min", "threshimg", 0, 255, NULL);
-    setTrackbarPos("thresh_max", "threshimg", 37);
-    setTrackbarPos("thresh_min", "threshimg", 28);
     int thresh_max = getTrackbarPos("thresh_max", "threshimg");
     int thresh_min = getTrackbarPos("thresh_min", "threshimg");
-    
+
+    if (thresh_max == 0)
+    {
+        setTrackbarPos("thresh_max", "threshimg", 38);
+    }
+    if (thresh_min == 0)
+    {
+        setTrackbarPos("thresh_min", "threshimg", 28);
+    }
+
     predispose(rawimg, threshimg, 3, thresh_max, thresh_min);
 
     vector<vector<Point>> contours;
@@ -372,11 +385,8 @@ float cubemeasure(Mat rawimg, Mat depimg)
         if (!farthestpair.empty())
         {
             line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
-            cout << "farthestpair: " << farthestpair << endl;
             depth_farpair[0] = getdepth(depimg, farthestpair[0], 4);
             depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
-            cout << "depth_farpair[0]: " << depth_farpair[0] << endl;
-            cout << "depth_farpair[1]: " << depth_farpair[1] << endl;
         }
         if (!closestpair.empty())
         {
