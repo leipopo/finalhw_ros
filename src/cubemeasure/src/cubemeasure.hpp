@@ -15,7 +15,15 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
+
+typedef struct {
+    float x_n_1;
+    float E_est_n_1;
+    float E_mea_n;
+}NF;
+
 
 using namespace cv;
 using namespace std;

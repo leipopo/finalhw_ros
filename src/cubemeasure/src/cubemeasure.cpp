@@ -1,9 +1,69 @@
 #include "cubemeasure.hpp"
 
 #define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
+#define outputimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/output.jpg"
 
 Mat raw_img;
 Mat raw_depth;
+
+Mat camerargbinfo;
+Mat cameradepthinfo;
+
+float cubelength = 1.0;
+
+NF nf = {0, 0.5, 0.01};
+
+float numberfusion(float x_n_1, NF *nf)
+{
+    float K_n = nf->E_est_n_1 / (nf->E_est_n_1 + nf->E_mea_n);
+    float x_n = nf->x_n_1 + K_n * (x_n_1 - nf->x_n_1);
+    nf->E_est_n_1 = (1 - K_n) * nf->E_est_n_1;
+    nf->x_n_1 = x_n;
+    // nf->E_mea_n = 1-nf->E_est_n_1;
+    cout << "k_n:" << K_n << endl;
+    cout << "mea:" << nf->E_mea_n << endl;
+    cout << "est:" << nf->E_est_n_1 << endl;
+    return x_n;
+}
+
+float getcubelength(float d[2], float cublen, NF *nf)
+{
+    if (d[0] >= 0.8 && d[1] >= 0.8)
+    {
+
+        cublen = numberfusion(MAX(d[0], d[1]), nf);
+    }
+    else if (d[0] == 0 && d[1] >= 0.8)
+    {
+        // if (fabsf(d[1] - cublen) < 0.1)
+        // {
+            cublen = numberfusion(d[1], nf);
+        // }
+        // else
+        // {
+        //     cublen = numberfusion(cublen, nf);
+        // }
+    }
+    else if (d[1] == 0 && d[0] >= 0.8)
+    {
+        // if (fabsf(d[0] - cublen) < 0.1)
+        // {
+            cublen = numberfusion(d[0], nf);
+        // }
+        // else
+        // {
+        //     cublen = numberfusion(cublen, nf);
+        // }
+    }
+    else
+    {
+        nf->E_est_n_1 = 0.5;
+        nf->E_mea_n = 0.5;
+        cout << "reset" << endl;
+        cublen = numberfusion(cublen, nf);
+    }
+    return cublen;
+}
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -29,6 +89,24 @@ void depthCallback(const sensor_msgs::ImageConstPtr &msg)
     {
         ROS_ERROR("Could not convert from '%s' to '32FC1'.", msg->encoding.c_str());
     }
+}
+
+void camerargbinfoCallback(const sensor_msgs::CameraInfoConstPtr &msg)
+{
+    camerargbinfo = Mat(3, 3, CV_64FC1, (void *)msg->K.data()).clone();
+}
+
+Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
+{
+    float fx = camerainfo.at<double>(0, 0);
+    float fy = camerainfo.at<double>(1, 1);
+    float cx = camerainfo.at<double>(0, 2);
+    float cy = camerainfo.at<double>(1, 2);
+    Point3f camera_point;
+    camera_point.x = (pixel.x - cx) * depth / fx;
+    camera_point.y = (pixel.y - cy) * depth / fy;
+    camera_point.z = depth;
+    return camera_point;
 }
 
 void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min)
@@ -256,7 +334,7 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             farthestpair.push_back(downcontours[i]);
             downcontours.erase(downcontours.begin() + i);
             i--;
-            cout << "farthestpair is " << farthestpair << endl;
+            // cout << "farthestpair is " << farthestpair << endl;
             // }
         }
 
@@ -268,7 +346,7 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             closestpair.push_back(downcontours[i]);
             downcontours.erase(downcontours.begin() + i);
             i--;
-            cout << "closestpair is " << closestpair << endl;
+            // cout << "closestpair is " << closestpair << endl;
             // }
         }
     }
@@ -327,19 +405,22 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     return depth;
 }
 
-float cubemeasure(Mat rawimg, Mat depimg)
+float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 {
 
     // rawimg.resize(640, 480);
     // imshow("rawimg", rawimg);
     // waitKey(1);
-
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
     vector<Point> farthestpair;
     vector<Point> closestpair;
     float depth_farpair[2] = {0};
     float depth_closepair[2] = {0};
-
     Mat threshimg;
+    Point3f pixel2camera_point_farpair[2];
+    Point3f pixel2camera_point_closepair[2];
+    float dist[2] = {0};
 
     namedWindow("threshimg", WINDOW_NORMAL);
     createTrackbar("thresh_max", "threshimg", 0, 255, NULL);
@@ -358,14 +439,12 @@ float cubemeasure(Mat rawimg, Mat depimg)
 
     predispose(rawimg, threshimg, 3, thresh_max, thresh_min);
 
-    vector<vector<Point>> contours;
-    vector<Vec4i> hierarchy;
     findContours(threshimg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
     if (contours.empty())
     {
         cout << "contours empty" << endl;
-        return 0;
+        return cublen;
     }
 
     else
@@ -375,29 +454,59 @@ float cubemeasure(Mat rawimg, Mat depimg)
         if (maxsizeContours.size() < 500)
         {
             cout << "contours too small" << endl;
-            return 0;
+            return cublen;
         }
 
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
+        // cout << "farthestpair is " << farthestpair << endl;
+        // cout << "closestpair is " << closestpair << endl;
         if (!farthestpair.empty())
         {
             line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
             depth_farpair[0] = getdepth(depimg, farthestpair[0], 4);
             depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
+            // cout << "depth1:" << depth_farpair[0] << endl;
+            // cout << "depth2:" << depth_farpair[1] << endl;
+            if (isnan(depth_closepair[0]) || isnan(depth_closepair[1]) || isinf(depth_closepair[0]) || isinf(depth_closepair[1]))
+            {
+                cout << "depth error" << endl;
+                return cublen;
+            }
+            pixel2camera_point_farpair[0] = pixel2camera(farthestpair[0], depth_farpair[0], camerargbinfo);
+            pixel2camera_point_farpair[1] = pixel2camera(farthestpair[1], depth_farpair[1], camerargbinfo);
+            // cout << "far1:" << pixel2camera_point_farpair[0] << endl;
+            // cout << "far2:" << pixel2camera_point_farpair[1] << endl;
+            dist[0] = norm(pixel2camera_point_farpair[0] - pixel2camera_point_farpair[1]);
+            putText(rawimg, to_string(dist[0]), (farthestpair[0] + farthestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
         }
         if (!closestpair.empty())
         {
             line(rawimg, closestpair[0], closestpair[1], Scalar(255, 255, 255), 2);
             depth_closepair[0] = getdepth(depimg, closestpair[0], 4);
             depth_closepair[1] = getdepth(depimg, closestpair[1], 4);
+            // cout << "depth1:" << depth_closepair[0] << endl;
+            // cout << "depth2:" << depth_closepair[1] << endl;
+            if (isnan(depth_closepair[0]) || isnan(depth_closepair[1]) || isinf(depth_closepair[0]) || isinf(depth_closepair[1]))
+            {
+                cout << "depth error" << endl;
+                return cublen;
+            }
+
+            pixel2camera_point_closepair[0] = pixel2camera(closestpair[0], depth_closepair[0], camerargbinfo);
+            pixel2camera_point_closepair[1] = pixel2camera(closestpair[1], depth_closepair[1], camerargbinfo);
+            // cout << "close1:" << pixel2camera_point_closepair[0] << endl;
+            // cout << "close2:" << pixel2camera_point_closepair[1] << endl;
+            dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
+            putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
         }
+
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
-            return 0;
+            return cublen;
         }
         else if (farthestpair.empty())
         {
@@ -408,15 +517,19 @@ float cubemeasure(Mat rawimg, Mat depimg)
             cout << "no closestpair" << endl;
         }
 
-        float dist = 10;
-        // cout << "dist: " << fabsf(dist) << endl;
-        return fabsf(dist);
+        cublen = getcubelength(dist, cublen, nf);
+        cout << "cublen is " << cublen << endl;
+        if(nf->E_est_n_1<=0.001)
+        {
+            imwrite(outputimg_path, raw_img);
+        }
+        imshow("cubemeasure", raw_img);
+        return fabsf(cublen);
     }
 }
 
 // int main(int argc, char **argv)
 // {
-
 //     float length = cubemeasure(raw_img, raw_depth);
 //     waitKey(0);
 //     return 0;
@@ -428,6 +541,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::Subscriber sub_rgb = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
     ros::Subscriber sub_depth = nh.subscribe("/camera2/depth/image_raw", 1, depthCallback);
+    ros::Subscriber sub_camerargbinfo = nh.subscribe("/camera2/depth/camera_info", 1, camerargbinfoCallback);
     ros::Publisher pub = nh.advertise<std_msgs::String>("cubemeasure_result_str", 1);
     ros::Rate loop_rate(10);
     namedWindow("cubemeasure", WINDOW_AUTOSIZE);
@@ -435,13 +549,12 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         ros::spinOnce();
-        if (raw_img.empty() || raw_depth.empty())
+        if (raw_img.empty() || raw_depth.empty() || camerargbinfo.empty())
         {
             continue;
         }
-        float length = cubemeasure(raw_img, raw_depth);
-        // cout << "length: " << length << endl;
-        imshow("cubemeasure", raw_img);
+        cubelength = cubemeasure(raw_img, raw_depth, cubelength, &nf);
+        
         // std_msgs::String msg;
         // std::stringstream ss;
         // ss << "length";
