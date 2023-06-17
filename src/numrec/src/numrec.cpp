@@ -11,7 +11,7 @@ numrec_result num_rec(Mat raw_tarimg)
 
     Mat blur_tarimg;
     Ptr<ml::KNearest> knn = ml::KNearest::create();
-    knn = ml::KNearest::load(knn_path_result);
+    knn = ml::KNearest::load(getpath(knn_path_result, "numrec").c_str());
     blur(gray_tarimg, blur_tarimg, Size(3, 3)); // 模糊
     // imshow("blur_tarimg", blur_tarimg);
 
@@ -156,4 +156,3 @@ int main(int argc, char **argv)
     ros::spin();
     return 0;
 }
-

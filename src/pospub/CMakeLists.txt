@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(numrec)
+project(pospub)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,13 +8,12 @@ project(numrec)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  cv_bridge
-  image_transport
+  geometry_msgs
+  move_base_msgs
   roscpp
   rospy
-  sensor_msgs
   std_msgs
-  pospub
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -74,7 +73,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   sensor_msgs#   std_msgs
+#   geometry_msgs#   move_base_msgs#   std_msgs
 # )
 
 ################################################
@@ -107,10 +106,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
-#  LIBRARIES numrec
-#  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
- DEPENDS pospub
+  INCLUDE_DIRS include
+  LIBRARIES pospub
+#  CATKIN_DEPENDS geometry_msgs move_base_msgs roscpp rospy std_msgs
+#  DEPENDS system_lib
 )
 
 ###########
@@ -120,14 +119,17 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/numrec.cpp
-# )
+add_library(${PROJECT_NAME}
+  src/file_prc.cpp
+)
+target_link_libraries( ${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -137,7 +139,7 @@ include
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/numrec_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/pospub_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -201,7 +203,7 @@ include
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_numrec.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_pospub.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
@@ -209,15 +211,14 @@ include
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-# catkin_install_python(PROGRAMS scripts/trainer.py
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+add_executable(pos_pub src/pos_pub.cpp src/file_prc.cpp)
+target_link_libraries(pos_pub ${catkin_LIBRARIES})
 
-add_executable(trainer src/trainer.cpp)
-target_link_libraries(trainer ${catkin_LIBRARIES})
+add_executable(recpos_begin src/recpos_begin.cpp src/file_prc.cpp)
+target_link_libraries(recpos_begin ${catkin_LIBRARIES})
 
-add_executable(generate_cfg src/cfgfilegen.cpp)
-target_link_libraries(generate_cfg ${catkin_LIBRARIES})
+add_executable(recpos_end src/recpos_end.cpp src/file_prc.cpp)
+target_link_libraries(recpos_end ${catkin_LIBRARIES})
 
-add_executable(num_rec src/numrec.cpp)
-target_link_libraries(num_rec ${catkin_LIBRARIES})
+add_executable(recpos_mid src/recpos_mid.cpp src/file_prc.cpp)
+target_link_libraries(recpos_mid ${catkin_LIBRARIES})

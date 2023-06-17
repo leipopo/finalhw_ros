@@ -1,7 +1,7 @@
 #include "cubemeasure.hpp"
 
 #define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
-#define outputimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/output.jpg"
+
 
 Mat raw_img;
 Mat raw_depth;
@@ -58,7 +58,7 @@ float getcubelength(float d[2], float cublen, NF *nf)
     else
     {
         nf->E_est_n_1 = 0.5;
-        nf->E_mea_n = 0.5;
+        nf->E_mea_n = 0.01;
         cout << "reset" << endl;
         cublen = numberfusion(cublen, nf);
     }
@@ -316,15 +316,8 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
         lowestdowncontour = findlowestPoint(downcontours);
     }
 
-    // cout << "heightestupcontour: " << heightestupcontour << endl;
-    // cout << "lowestdowncontour: " << lowestdowncontour << endl;
-    // cout << "lowestupcontour: " << lowestupcontour << endl;
-    // cout << "heightestdowncontour: " << heightestdowncontour << endl;
-
     for (int i = 0; i < downcontours.size(); i++)
     {
-
-        // cout << "heightestupcontour.x: " << heightestupcontour.x << endl;
         if (abs(downcontours[i].x - heightestupcontour.x) < 20)
         {
             // if (abs(downcontours[i].y - aver_down_y) < 10)
@@ -350,11 +343,6 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             // }
         }
     }
-
-    // cout << "upcontours size is " << upcontours.size() << endl;
-    // cout << "downcontours size is " << downcontours.size() << endl;
-    // cout << "farthestpair is " << farthestpair << endl;
-    // cout << "closestpair is " << closestpair << endl;
 
     if ((farthestpair.empty() || (closestpair.empty())))
     {
@@ -385,9 +373,10 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
 
 float getdepth(Mat depimg, Point tarpoint, int size)
 {
-    Rect rect(MIN(MAX(0, tarpoint.x - size / 2), depimg.cols - size), MIN(MAX(0, tarpoint.y - size / 2), depimg.rows - size), size, size);
+    Rect rect(MIN(MAX(1, tarpoint.x - size / 2), depimg.cols - size-1), MIN(MAX(1, tarpoint.y - size / 2), depimg.rows - size-1), size, size);
     Mat roi = depimg(rect);
     float minValue = numeric_limits<double>::max();
+    cout<<"debug9"<<endl;
     for (int i = 0; i < roi.rows; i++)
     {
         for (int j = 0; j < roi.cols; j++)
@@ -401,13 +390,17 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     }
 
     float depth = minValue;
-
+    cout<<"debug10"<<endl;
     return depth;
 }
 
 float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 {
-
+    if(isinf(cublen)||isnan(cublen))
+    {
+        return 0;
+    }
+    
     // rawimg.resize(640, 480);
     // imshow("rawimg", rawimg);
     // waitKey(1);
@@ -460,6 +453,8 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
+        cout<<"debug"<<endl;
+
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
         // cout << "farthestpair is " << farthestpair << endl;
         // cout << "closestpair is " << closestpair << endl;
@@ -470,7 +465,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
             // cout << "depth1:" << depth_farpair[0] << endl;
             // cout << "depth2:" << depth_farpair[1] << endl;
-            if (isnan(depth_closepair[0]) || isnan(depth_closepair[1]) || isinf(depth_closepair[0]) || isinf(depth_closepair[1]))
+            if (isnan(depth_farpair[0]) || isnan(depth_farpair[1]) || isinf(depth_farpair[0]) || isinf(depth_farpair[1]))
             {
                 cout << "depth error" << endl;
                 return cublen;
@@ -502,7 +497,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
             putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
         }
-
+        cout<<"debug1"<<endl;
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
@@ -519,11 +514,11 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 
         cublen = getcubelength(dist, cublen, nf);
         cout << "cublen is " << cublen << endl;
-        if(nf->E_est_n_1<=0.001)
-        {
-            imwrite(outputimg_path, raw_img);
-        }
-        imshow("cubemeasure", raw_img);
+        // if(nf->E_est_n_1<=0.001)
+        // {
+        //     imwrite(outputimg_path, raw_img);
+        // }
+        
         return fabsf(cublen);
     }
 }
@@ -554,7 +549,7 @@ int main(int argc, char **argv)
             continue;
         }
         cubelength = cubemeasure(raw_img, raw_depth, cubelength, &nf);
-        
+        imshow("cubemeasure", raw_img);
         // std_msgs::String msg;
         // std::stringstream ss;
         // ss << "length";

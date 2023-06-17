@@ -1,30 +1,5 @@
 #include "numrec.hpp"
 
-void writefile(const char *path, string data)
-{
-    ofstream file;
-    file.open(path, ios::out | ios::app);
-    // ROS_INFO("file opened");
-    file << data;
-    // ROS_INFO("data written");
-    file.close();
-}
-
-string readfile(const char *path)
-{
-    ifstream file;
-    file.open(path, ios::in);
-    string data;
-    file >> data;
-    file.close();
-    return data;
-}
-
-void deletefile(const char *path)
-{
-    remove(path);
-}
-
 int main(int argc, const char **argv)
 {
 
@@ -33,7 +8,7 @@ int main(int argc, const char **argv)
     int nline = 1;
     string imgpath;
     ifstream cfgfile;
-    cfgfile.open(traincfg_path, ios::in);
+    cfgfile.open(getpath(traincfg_path, "numrec").c_str(), ios::in);
     while (!cfgfile.eof())
     {
         if (nline % 2 == 1)
@@ -66,7 +41,7 @@ int main(int argc, const char **argv)
         // imshow("blur_img", blur_img);
 
         Mat thresh_img;
-        threshold(blur_img, thresh_img, thresh_value, 255, THRESH_BINARY_INV ); // 二值化
+        threshold(blur_img, thresh_img, thresh_value, 255, THRESH_BINARY_INV); // 二值化
         // imshow("thresh_img", thresh_img);
 
         vector<vector<Point>> contours;                                                                 // 轮廓
@@ -98,24 +73,24 @@ int main(int argc, const char **argv)
 
     if (argv[1][0] == 's')
     {
-        deletefile(svm_path_result);
+        deletefile(getpath(svm_path_result, "numrec").c_str());
         Ptr<ml::SVM> svm = ml::SVM::create();
         svm->setType(ml::SVM::C_SVC);
         svm->setKernel(ml::SVM::LINEAR);
         svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
         svm->train(datamat, ml::ROW_SAMPLE, labelmat);
-        svm->save(svm_path_result);
+        svm->save(getpath(svm_path_result, "numrec").c_str());
         cout << "svm trained" << endl;
     }
     else if (argv[1][0] == 'k')
     {
-        
-        deletefile(knn_path_result);
+
+        deletefile(getpath(knn_path_result, "numrec").c_str());
         Ptr<ml::KNearest> knn = ml::KNearest::create();
         knn->setDefaultK(Kvalue);
         knn->setIsClassifier(true);
         knn->train(datamat, ml::ROW_SAMPLE, labelmat);
-        knn->save(knn_path_result);
+        knn->save(getpath(knn_path_result, "numrec").c_str());
         cout << "knn trained" << endl;
     }
     else

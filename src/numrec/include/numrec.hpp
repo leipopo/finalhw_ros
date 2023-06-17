@@ -1,3 +1,5 @@
+#ifndef NUMREC_HPP
+#define NUMREC_HPP
 #include "opencv4/opencv2/opencv.hpp"
 #include "opencv4/opencv2/core.hpp"
 #include "opencv4/opencv2/highgui.hpp"
@@ -15,15 +17,28 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
+#include "pos_pub.hpp"
 
-typedef struct {
-    float x_n_1;
-    float E_est_n_1;
-    float E_mea_n;
-}NF;
-
+#define img_path "/img"
+#define traincfg_path "/traindata/traincfg.txt"
+#define svm_path_result "/traindata/svm_result.txt"
+#define knn_path_result "/traindata/knn_result.xml"
 
 using namespace cv;
 using namespace std;
+
+typedef struct
+{
+    Mat img;
+    string result_str;
+} numrec_result;
+
+#define thresh_value 2
+
+#define imgx 60
+#define imgy 70
+
+#define Kvalue 3
+
+#endif 
