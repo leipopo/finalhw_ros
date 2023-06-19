@@ -1,6 +1,6 @@
 #include "cubemeasure.hpp"
 
-#define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
+// #define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
 
 
 Mat raw_img;
@@ -514,10 +514,10 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 
         cublen = getcubelength(dist, cublen, nf);
         cout << "cublen is " << cublen << endl;
-        // if(nf->E_est_n_1<=0.001)
-        // {
-        //     imwrite(outputimg_path, raw_img);
-        // }
+        if(nf->E_est_n_1<=0.001)
+        {
+            imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
+        }
         
         return fabsf(cublen);
     }

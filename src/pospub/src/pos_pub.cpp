@@ -1,17 +1,106 @@
 #include "pos_pub.hpp"
 
-void resultCallback(const move_base_msgs::MoveBaseActionResult &msg);
-
 float position[100][7];
 int line_num_read = 0, line_num_send = 0;
-int flag = 0;
+int race_path_line_num = 0;
+
+int tarpath = 0;
+
+int flag_begin = 0;
+int flag_num = 0;
+int flag_cube = 0;
+
+void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
+{
+    ROS_INFO("result: %d", msg.status.status);
+    flag_begin = 1;
+    if (msg.status.status == 3)
+    {
+        ros::NodeHandle nh;
+        geometry_msgs::PoseStamped goal;
+        goal.header.frame_id = "odom";
+        goal.header.stamp = ros::Time::now();
+        goal.pose.position.x = position[line_num_send][0];
+        goal.pose.position.y = position[line_num_send][1];
+        goal.pose.position.z = position[line_num_send][2];
+        goal.pose.orientation.x = position[line_num_send][3];
+        goal.pose.orientation.y = position[line_num_send][4];
+        goal.pose.orientation.z = position[line_num_send][5];
+        goal.pose.orientation.w = position[line_num_send][6];
+
+        if (!flag_num)
+        {
+            if (line_num_send < race_path_line_num - 1)
+            {
+                line_num_send++;
+            }
+            else if (line_num_send == race_path_line_num - 1)
+            {
+                line_num_send = race_path_line_num - 2;
+            }
+        }
+        else
+        {
+            line_num_send++;
+        }
+
+        if (line_num_send <= line_num_read)
+        {
+            // ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
+            // ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
+            ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
+            pub_goal.publish(goal);
+        }
+        else
+        {
+            ROS_INFO("finish");
+            ros::shutdown();
+        }
+    }
+}
+
+void numrecCallback(const std_msgs::String &msg)
+{
+    string num = msg.data;
+    
+    if(num.size() == 4)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            num[i] = num[i] - '0';
+            if(num[i] ==tarpath)
+            {
+                flag_num = 1;
+                if(i ==0)
+                {
+                    line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
+                }
+                else if (i == 1)
+                {
+                    line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
+                }
+                else if (i == 2)
+                {
+                    line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
+                }
+                else if (i == 3)
+                {
+                    line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
+                }
+                break;
+            }
+        }
+
+        
+    }
+
+}
 
 int read_pathrecord(const char *path, float position[][7], int linenumread)
 {
     fstream file;
     string line;
     int begin, end;
-    int linenum = linenumread;
 
     file.open(path, ios::in);
 
@@ -66,35 +155,39 @@ int read_pathrecord(const char *path, float position[][7], int linenumread)
 
 int main(int argc, char **argv)
 {
+
+    tarpath = argv[1][0] - '0';
+
     ros::init(argc, argv, "move_base_goal_pub");
     ros::NodeHandle nh;
 
     line_num_read = read_pathrecord(getpath(record_path_begin, "pospub").c_str(), position, line_num_read);
+    race_path_line_num = line_num_read;
 
-    if (argv[1][0] == '1')
-    {
-        line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
-        ROS_INFO("cargothrough1");
-    }
-    else if (argv[1][0] == '2')
-    {
-        line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
-        ROS_INFO("cargothrough2");
-    }
-    else if (argv[1][0] == '3')
-    {
-        line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
-        ROS_INFO("cargothrough3");
-    }
-    else if (argv[1][0] == '4')
-    {
-        line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
-        ROS_INFO("cargothrough4");
-    }
-    else
-    {
-        ROS_INFO("wrong input");
-    }
+    // if (argv[1][0] == '1')
+    // {
+    //     line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
+    //     ROS_INFO("cargothrough1");
+    // }
+    // else if (argv[1][0] == '2')
+    // {
+    //     line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
+    //     ROS_INFO("cargothrough2");
+    // }
+    // else if (argv[1][0] == '3')
+    // {
+    //     line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
+    //     ROS_INFO("cargothrough3");
+    // }
+    // else if (argv[1][0] == '4')
+    // {
+    //     line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
+    //     ROS_INFO("cargothrough4");
+    // }
+    // else
+    // {
+    //     ROS_INFO("wrong input");
+    // }
     // line_num_read = read_pathrecord(getpath(record_path_end, "pospub").c_str(), position, line_num_read);
     line_num_send = 0;
 
@@ -111,9 +204,10 @@ int main(int argc, char **argv)
     goal.pose.orientation.w = position[0][6];
     line_num_send++;
     ros::Subscriber sub_result = nh.subscribe("/move_base/result", 1000, &resultCallback);
+    ros::Subscriber sub_numrec = nh.subscribe("/numrec_result_str", 1000, &numrecCallback);
 
     ros::Rate loop_rate(500);
-    while (!flag)
+    while (!flag_begin)
     {
         pub_goal.publish(goal);
         ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
@@ -123,37 +217,4 @@ int main(int argc, char **argv)
     }
 
     ros::spin();
-}
-
-void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
-{
-    ROS_INFO("result: %d", msg.status.status);
-    flag = 1;
-    if (msg.status.status == 3)
-    {
-        ros::NodeHandle nh;
-        geometry_msgs::PoseStamped goal;
-        goal.header.frame_id = "odom";
-        goal.header.stamp = ros::Time::now();
-        goal.pose.position.x = position[line_num_send][0];
-        goal.pose.position.y = position[line_num_send][1];
-        goal.pose.position.z = position[line_num_send][2];
-        goal.pose.orientation.x = position[line_num_send][3];
-        goal.pose.orientation.y = position[line_num_send][4];
-        goal.pose.orientation.z = position[line_num_send][5];
-        goal.pose.orientation.w = position[line_num_send][6];
-        line_num_send++;
-        if (line_num_send <= line_num_read)
-        {
-            ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
-            ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
-            ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
-            pub_goal.publish(goal);
-        }
-        else
-        {
-            ROS_INFO("finish");
-            ros::shutdown();
-        }
-    }
 }

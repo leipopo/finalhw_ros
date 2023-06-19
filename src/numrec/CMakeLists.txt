@@ -110,7 +110,7 @@ catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES numrec
 #  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
- DEPENDS pospub
+#  DEPENDS pospub
 )
 
 ###########

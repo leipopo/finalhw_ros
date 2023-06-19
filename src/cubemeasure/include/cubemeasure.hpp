@@ -19,8 +19,9 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
+#include <pos_pub.hpp>
 
-#define outputimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/output.jpg"
+#define outputimg_path "/img/output.jpg"
 
 typedef struct {
     float x_n_1;
