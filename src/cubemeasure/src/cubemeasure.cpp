@@ -2,7 +2,6 @@
 
 // #define testimg_path "/home/lpga/finalhw_ros/src/cubemeasure/img/cube-1.jpg"
 
-
 Mat raw_img;
 Mat raw_depth;
 
@@ -12,6 +11,10 @@ Mat cameradepthinfo;
 float cubelength = 1.0;
 
 NF nf = {0, 0.5, 0.01};
+
+ros::Subscriber sub_camerargbinfo;
+ros::Subscriber sub_depth;
+ros::Subscriber sub_rgb;
 
 float numberfusion(float x_n_1, NF *nf)
 {
@@ -37,7 +40,7 @@ float getcubelength(float d[2], float cublen, NF *nf)
     {
         // if (fabsf(d[1] - cublen) < 0.1)
         // {
-            cublen = numberfusion(d[1], nf);
+        cublen = numberfusion(d[1], nf);
         // }
         // else
         // {
@@ -48,7 +51,7 @@ float getcubelength(float d[2], float cublen, NF *nf)
     {
         // if (fabsf(d[0] - cublen) < 0.1)
         // {
-            cublen = numberfusion(d[0], nf);
+        cublen = numberfusion(d[0], nf);
         // }
         // else
         // {
@@ -94,6 +97,7 @@ void depthCallback(const sensor_msgs::ImageConstPtr &msg)
 void camerargbinfoCallback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
     camerargbinfo = Mat(3, 3, CV_64FC1, (void *)msg->K.data()).clone();
+    sub_camerargbinfo.shutdown();
 }
 
 Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
@@ -373,10 +377,10 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
 
 float getdepth(Mat depimg, Point tarpoint, int size)
 {
-    Rect rect(MIN(MAX(1, tarpoint.x - size / 2), depimg.cols - size-1), MIN(MAX(1, tarpoint.y - size / 2), depimg.rows - size-1), size, size);
+    Rect rect(MIN(MAX(1, tarpoint.x - size / 2), depimg.cols - size - 1), MIN(MAX(1, tarpoint.y - size / 2), depimg.rows - size - 1), size, size);
     Mat roi = depimg(rect);
     float minValue = numeric_limits<double>::max();
-    cout<<"debug9"<<endl;
+    cout << "debug9" << endl;
     for (int i = 0; i < roi.rows; i++)
     {
         for (int j = 0; j < roi.cols; j++)
@@ -390,17 +394,17 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     }
 
     float depth = minValue;
-    cout<<"debug10"<<endl;
+    cout << "debug10" << endl;
     return depth;
 }
 
 float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 {
-    if(isinf(cublen)||isnan(cublen))
+    if (isinf(cublen) || isnan(cublen))
     {
         return 0;
     }
-    
+
     // rawimg.resize(640, 480);
     // imshow("rawimg", rawimg);
     // waitKey(1);
@@ -453,7 +457,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
-        cout<<"debug"<<endl;
+        cout << "debug" << endl;
 
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
         // cout << "farthestpair is " << farthestpair << endl;
@@ -497,7 +501,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
             putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
         }
-        cout<<"debug1"<<endl;
+        cout << "debug1" << endl;
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
@@ -514,11 +518,11 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 
         cublen = getcubelength(dist, cublen, nf);
         cout << "cublen is " << cublen << endl;
-        if(nf->E_est_n_1<=0.001)
+        if (nf->E_est_n_1 <= 0.001)
         {
             imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
         }
-        
+
         return fabsf(cublen);
     }
 }
@@ -534,9 +538,9 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "cubemeasure");
     ros::NodeHandle nh;
-    ros::Subscriber sub_rgb = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
-    ros::Subscriber sub_depth = nh.subscribe("/camera2/depth/image_raw", 1, depthCallback);
-    ros::Subscriber sub_camerargbinfo = nh.subscribe("/camera2/depth/camera_info", 1, camerargbinfoCallback);
+    sub_rgb = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
+    sub_depth = nh.subscribe("/camera2/depth/image_raw", 1, depthCallback);
+    sub_camerargbinfo = nh.subscribe("/camera2/depth/camera_info", 1, camerargbinfoCallback);
     ros::Publisher pub = nh.advertise<std_msgs::String>("cubemeasure_result_str", 1);
     ros::Rate loop_rate(10);
     namedWindow("cubemeasure", WINDOW_AUTOSIZE);
