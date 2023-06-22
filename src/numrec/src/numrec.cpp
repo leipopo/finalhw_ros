@@ -103,7 +103,7 @@ numrec_result num_rec(Mat raw_tarimg)
     }
 
     result.img = raw_tarimg;
-
+    cout << "result " << result.result_str << endl;
     return result;
 }
 
@@ -146,7 +146,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "move_base_goal_pub");
+    ros::init(argc, argv, "numrec");
     ros::NodeHandle nh;
     ros::Subscriber sub = nh.subscribe("/camera2/rgb/image_raw", 1, imageCallback);
     ros::Publisher pub = nh.advertise<std_msgs::String>("numrec_result_str", 1);

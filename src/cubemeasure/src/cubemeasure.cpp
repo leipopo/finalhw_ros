@@ -20,23 +20,24 @@ float numberfusion(float x_n_1, NF *nf)
 {
     float K_n = nf->E_est_n_1 / (nf->E_est_n_1 + nf->E_mea_n);
     float x_n = nf->x_n_1 + K_n * (x_n_1 - nf->x_n_1);
-    nf->E_est_n_1 = (1 - K_n) * nf->E_est_n_1;
+    nf->E_est_n_1 = MAX(0.005, (1 - K_n) * nf->E_est_n_1);
     nf->x_n_1 = x_n;
     // nf->E_mea_n = 1-nf->E_est_n_1;
-    cout << "k_n:" << K_n << endl;
-    cout << "mea:" << nf->E_mea_n << endl;
-    cout << "est:" << nf->E_est_n_1 << endl;
+    // cout << "k_n:" << K_n << endl;
+    // cout << "mea:" << nf->E_mea_n << endl;
+    // cout << "est:" << nf->E_est_n_1 << endl;
     return x_n;
 }
 
 float getcubelength(float d[2], float cublen, NF *nf)
 {
-    if (d[0] >= 0.8 && d[1] >= 0.8)
+    if (d[0] >= 0.98 && d[1] >= 0.98 && d[0] < 2.02 && d[1] < 2.02)
     {
-
-        cublen = numberfusion(MAX(d[0], d[1]), nf);
+        cublen = numberfusion(d[0], nf);
+        cublen = numberfusion(d[1], nf);
+        // cublen = numberfusion(MIN(d[0], d[1]), nf);
     }
-    else if (d[0] == 0 && d[1] >= 0.8)
+    else if (d[1] >= 0.98 && d[1] < 2.02)
     {
         // if (fabsf(d[1] - cublen) < 0.1)
         // {
@@ -47,7 +48,7 @@ float getcubelength(float d[2], float cublen, NF *nf)
         //     cublen = numberfusion(cublen, nf);
         // }
     }
-    else if (d[1] == 0 && d[0] >= 0.8)
+    else if (d[0] >= 0.98 && d[0] < 2.02)
     {
         // if (fabsf(d[0] - cublen) < 0.1)
         // {
@@ -115,8 +116,19 @@ Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
 
 void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min)
 {
+    Mat imageWithout_Red_blue = rawimg.getMat().clone();
+
+    for (int i = 0; i < imageWithout_Red_blue.rows; i++)
+    {
+        for (int j = 0; j < imageWithout_Red_blue.cols; j++)
+        {
+            imageWithout_Red_blue.at<cv::Vec3b>(i, j)[2] = 0; // 红色通道置零
+            imageWithout_Red_blue.at<cv::Vec3b>(i, j)[0] = 0; // 蓝色通道置零
+        }
+    }
+
     Mat grayimg;
-    cvtColor(rawimg, grayimg, COLOR_BGR2GRAY);
+    cvtColor(imageWithout_Red_blue, grayimg, COLOR_BGR2GRAY);
     Mat threshimg_max;
     Mat threshimg_min;
     Mat threshimg;
@@ -239,19 +251,21 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
     {
         if (abs(contours[i].y - rect.y - rect.height / 2) < 20)
         {
-            contours.erase(contours.begin() + i);
+            contours.erase(contours.begin() + i); // 删除接近中心的点
             i--;
             continue;
         }
         if (contours[i].y < rect.y + rect.height / 2)
         {
-            upcontours.push_back(contours[i]);
+            upcontours.push_back(contours[i]); // 记录上边沿的点
         }
         else if (contours[i].y > rect.y + rect.height / 2)
         {
-            downcontours.push_back(contours[i]);
+            downcontours.push_back(contours[i]); // 记录下边沿的点
         }
     }
+    // cout << "upcontours size: " << upcontours.size() << endl;
+    // cout << "downcontours size: " << downcontours.size() << endl;
     if (upcontours.size() == 0 || downcontours.size() == 0)
     {
         cout << "upcontours size or downcontours size is 0" << endl;
@@ -260,23 +274,32 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
     aver_up_y = findaverheight(upcontours);
     aver_down_y = findaverheight(downcontours);
 
-    for (int i = 0; i < downcontours.size(); i++)
-    {
-        if (fabsf(downcontours[i].y - aver_down_y) > 60)
-        {
-            downcontours.erase(downcontours.begin() + i);
-            i--;
-        }
-    }
+    // drawContours(rawimg, upcontours, -1, Scalar(0, 0, 255), 2);
+    // drawContours(rawimg, downcontours, -1, Scalar(0, 0, 255), 2);
 
-    for (int i = 0; i < upcontours.size(); i++)
-    {
-        if (fabsf(upcontours[i].y - aver_up_y) > 60)
-        {
-            upcontours.erase(upcontours.begin() + i);
-            i--;
-        }
-    }
+    // for (int i = 0; i < downcontours.size(); i++)
+    // {
+    //     if (fabsf(downcontours[i].y - aver_down_y) > 60)
+    //     {
+    //         cout << "downcontours: " << downcontours << endl;
+    //         downcontours.erase(downcontours.begin() + i);
+    //         cout << "aver_down_y: " << aver_down_y << endl;
+    //         cout << "erase downcontours: " << downcontours[i] << endl;
+    //         i--;
+    //     }
+    // }
+
+    // for (int i = 0; i < upcontours.size(); i++)
+    // {
+    //     if (fabsf(upcontours[i].y - aver_up_y) > 60)
+    //     {
+    //         cout << "upcontours: " << upcontours << endl;
+    //         upcontours.erase(upcontours.begin() + i);
+    //         cout << "aver_up_y: " << aver_up_y << endl;
+    //         cout << "erase upcontours: " << upcontours[i] << endl;
+    //         i--;
+    //     }
+    // }
 
     if (upcontours.size() == 0 || downcontours.size() == 0)
     {
@@ -286,21 +309,6 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
 
     aver_down_y = findaverheight(downcontours);
     aver_up_y = findaverheight(upcontours);
-
-    vector<KeyPoint> keypoints;
-    for (int i = 0; i < upcontours.size(); i++)
-    {
-        keypoints.push_back(KeyPoint(upcontours[i], 1));
-        drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        putText(rawimg, to_string(upcontours[i].x) + "," + to_string(upcontours[i].y) + "num: " + to_string(i), upcontours[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
-    }
-
-    for (int i = 0; i < downcontours.size(); i++)
-    {
-        keypoints.push_back(KeyPoint(downcontours[i], 1));
-        drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        putText(rawimg, to_string(downcontours[i].x) + "," + to_string(downcontours[i].y) + "num: " + to_string(i), downcontours[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
-    }
 
     Point heightestupcontour = upcontours[0];
     Point heightestdowncontour = downcontours[0];
@@ -356,19 +364,19 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             {
                 if (abs(upcontours[i].x - downcontours[j].x) < 5)
                 {
-                    if ((abs(upcontours[i].y - aver_up_y) < 20) && (abs(downcontours[j].y - aver_down_y) < 20))
+                    // if ((abs(upcontours[i].y - aver_up_y) < 20) && (abs(downcontours[j].y - aver_down_y) < 20))
+                    // {
+                    if (farthestpair.empty())
                     {
-                        if (farthestpair.empty())
-                        {
-                            farthestpair.push_back(upcontours[i]);
-                            farthestpair.push_back(downcontours[j]);
-                        }
-                        else if (closestpair.empty())
-                        {
-                            closestpair.push_back(upcontours[i]);
-                            closestpair.push_back(downcontours[j]);
-                        }
+                        farthestpair.push_back(upcontours[i]);
+                        farthestpair.push_back(downcontours[j]);
                     }
+                    else if (closestpair.empty())
+                    {
+                        closestpair.push_back(upcontours[i]);
+                        closestpair.push_back(downcontours[j]);
+                    }
+                    // }
                 }
             }
         }
@@ -379,14 +387,23 @@ float getdepth(Mat depimg, Point tarpoint, int size)
 {
     Rect rect(MIN(MAX(1, tarpoint.x - size / 2), depimg.cols - size - 1), MIN(MAX(1, tarpoint.y - size / 2), depimg.rows - size - 1), size, size);
     Mat roi = depimg(rect);
+    // cout << "roi is " << roi << endl;
     float minValue = numeric_limits<double>::max();
-    cout << "debug9" << endl;
+    if (isnan(minValue) || isinf(minValue))
+    {
+        minValue = 100;
+    }
+    // cout << "debug9" << endl;
     for (int i = 0; i < roi.rows; i++)
     {
         for (int j = 0; j < roi.cols; j++)
         {
             float value = roi.at<float>(i, j);
-            if (value > 0 && value < minValue)
+            if (isnan(value) || isinf(value))
+            {
+                continue;
+            }
+            else if (value > 0 && value < minValue)
             {
                 minValue = value;
             }
@@ -394,7 +411,7 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     }
 
     float depth = minValue;
-    cout << "debug10" << endl;
+    // cout << "debug10" << endl;
     return depth;
 }
 
@@ -427,11 +444,11 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 
     if (thresh_max == 0)
     {
-        setTrackbarPos("thresh_max", "threshimg", 38);
+        setTrackbarPos("thresh_max", "threshimg", 85);
     }
     if (thresh_min == 0)
     {
-        setTrackbarPos("thresh_min", "threshimg", 28);
+        setTrackbarPos("thresh_min", "threshimg", 50);
     }
 
     predispose(rawimg, threshimg, 3, thresh_max, thresh_min);
@@ -448,7 +465,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
     {
         vector<Point> maxsizeContours;
         findmaxsizeContours(contours, maxsizeContours);
-        if (maxsizeContours.size() < 500)
+        if (maxsizeContours.size() < 1000)
         {
             cout << "contours too small" << endl;
             return cublen;
@@ -457,7 +474,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
-        cout << "debug" << endl;
+        // cout << "debug" << endl;
 
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
         // cout << "farthestpair is " << farthestpair << endl;
@@ -501,7 +518,23 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
             putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
         }
-        cout << "debug1" << endl;
+
+        vector<KeyPoint> keypoints;
+        for (int i = 0; i < farthestpair.size(); i++)
+        {
+            keypoints.push_back(KeyPoint(farthestpair[i], 1));
+            drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            putText(rawimg, to_string(farthestpair[i].x) + "," + to_string(farthestpair[i].y) + "num: " + to_string(i) + "dep: " + to_string(depth_farpair[i]), farthestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+        }
+
+        for (int i = 0; i < closestpair.size(); i++)
+        {
+            keypoints.push_back(KeyPoint(closestpair[i], 1));
+            drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            putText(rawimg, to_string(closestpair[i].x) + "," + to_string(closestpair[i].y) + "num: " + to_string(i) + "dep: " + to_string(depth_closepair[i]), closestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+        }
+
+        // cout << "debug1" << endl;
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
@@ -518,10 +551,10 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 
         cublen = getcubelength(dist, cublen, nf);
         cout << "cublen is " << cublen << endl;
-        if (nf->E_est_n_1 <= 0.001)
-        {
-            imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
-        }
+        // if (nf->E_est_n_1 <= 0.001)
+        // {
+        //     imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
+        // }
 
         return fabsf(cublen);
     }

@@ -9,6 +9,7 @@ int tarpath = 0;
 int flag_begin = 0;
 int flag_num = 0;
 int flag_cube = 0;
+int flag_time = 0;
 
 int read_pathrecord(const char *path, float position[][7], int linenumread)
 {
@@ -73,8 +74,33 @@ ros::Subscriber sub_cube;
 
 void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
 {
-    ROS_INFO("result: %d", msg.status.status);
+    // ROS_INFO("result: %d", msg.status.status);
+    time_t begin_time, end_time;
+    ros::Time ros_begin_time, ros_end_time;
     flag_begin = 1;
+
+    if (flag_time == 0)
+    {   
+        ros_begin_time = ros::Time::now();
+        cout << "ros_begin_time: " << ros_begin_time << endl;
+        begin_time = time(nullptr);
+        string time = ctime(&begin_time);
+        cout << "begin_time: " << time << endl;
+        flag_time = 1;
+    }
+    if (flag_time == 2)
+    {
+        ros_end_time = ros::Time::now();
+        cout << "ros_end_time: " << ros_end_time << endl;
+        end_time = time(nullptr);
+        string time = ctime(&end_time);
+        cout << "end_time: " << time << endl;
+        string cost_time = to_string(end_time - begin_time);
+        cout << "cost_time: " << cost_time << endl;
+        cout << "ros_cost_time: " << ros_end_time - ros_begin_time << endl;
+        flag_time = 3;
+    }
+
     if (msg.status.status == 3)
     {
         ros::NodeHandle nh;
@@ -93,10 +119,17 @@ void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
         {
             if (line_num_send < race_path_line_num - 1)
             {
+                if (line_num_send == race_path_line_num - 2 && flag_time == 1)
+                {
+
+                    flag_time = 2;
+                }
                 line_num_send++;
             }
+
             else if (line_num_send == race_path_line_num - 1)
             {
+
                 line_num_send = race_path_line_num - 2;
             }
         }
@@ -225,8 +258,8 @@ int main(int argc, char **argv)
     while (!flag_begin)
     {
         pub_goal.publish(goal);
-        ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
-        ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
+        // ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
+        // ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
         ros::spinOnce();
         loop_rate.sleep();
     }
