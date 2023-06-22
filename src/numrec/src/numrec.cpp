@@ -103,7 +103,6 @@ numrec_result num_rec(Mat raw_tarimg)
     }
 
     result.img = raw_tarimg;
-    cout << "result " << result.result_str << endl;
     return result;
 }
 
@@ -122,25 +121,46 @@ numrec_result num_rec(Mat raw_tarimg)
 
 numrec_result result;
 Mat raw_tarimg;
-static const char WINDOW[] = "Image window";
+static const char WINDOW[] = "numrec";
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
-    try
+
+    raw_tarimg = cv_bridge::toCvShare(msg, "bgr8")->image;
+    numrec_result result = num_rec(raw_tarimg);
+    // cout << "result_str: " << result.result_str << endl;
+    imshow(WINDOW, result.img);
+    ros::NodeHandle nh;
+    ros::Publisher pub = nh.advertise<std_msgs::String>("numrec_result_str", 1);
+
+    // cout << "result.result_str.size: " << result.result_str.size() << endl;
+    if (result.result_str.size() == 4)
     {
-        raw_tarimg = cv_bridge::toCvShare(msg, "bgr8")->image;
-        numrec_result result = num_rec(raw_tarimg);
-        // cout << "result_str: " << result.result_str << endl;
-        imshow(WINDOW, result.img);
-        ros::NodeHandle nh;
-        ros::Publisher pub = nh.advertise<std_msgs::String>("numrec_result_str", 1);
+        int result_error_flag = 0;
+        // cout << "result.result_str: " << result.result_str << endl;
+        for (int i = 0; i < 4; i++)
+        {
+        //     cout << "i: " << i << endl;
+        //     cout << "result.result_str[i]: " << result.result_str[i] << endl;
+            for (int j = i+1; j < 4; j++)
+            {
+                if (result.result_str[i] == result.result_str[j])
+                {
+                    cout << "result_error" << endl;
+                    result_error_flag = 1;
+                    return;
+                }
+            }
+        }
         std_msgs::String result_str;
         result_str.data = result.result_str;
+        cout << "result_str.data: " << result_str.data << endl;
         pub.publish(result_str);
     }
-    catch (cv_bridge::Exception &e)
+    else
     {
-        ROS_ERROR("Could not convert from '%s' to ''.", msg->encoding.c_str());
+        cout << "result_error" << endl;
+        return;
     }
 }
 

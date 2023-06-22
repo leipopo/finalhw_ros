@@ -72,17 +72,19 @@ ros::Subscriber sub_result;
 ros::Subscriber sub_numrec;
 ros::Subscriber sub_cube;
 
+time_t begin_time, end_time;
+ros::Time ros_begin_time, ros_end_time;
+
 void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
 {
     // ROS_INFO("result: %d", msg.status.status);
-    time_t begin_time, end_time;
-    ros::Time ros_begin_time, ros_end_time;
+
     flag_begin = 1;
 
     if (flag_time == 0)
-    {   
+    {
         ros_begin_time = ros::Time::now();
-        cout << "ros_begin_time: " << ros_begin_time << endl;
+        cout << "ros_begin_time: " << ros_begin_time.toSec() << endl;
         begin_time = time(nullptr);
         string time = ctime(&begin_time);
         cout << "begin_time: " << time << endl;
@@ -91,13 +93,14 @@ void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
     if (flag_time == 2)
     {
         ros_end_time = ros::Time::now();
-        cout << "ros_end_time: " << ros_end_time << endl;
+        cout << "ros_end_time: " << ros_end_time.toSec() << endl;
         end_time = time(nullptr);
         string time = ctime(&end_time);
         cout << "end_time: " << time << endl;
         string cost_time = to_string(end_time - begin_time);
         cout << "cost_time: " << cost_time << endl;
-        cout << "ros_cost_time: " << ros_end_time - ros_begin_time << endl;
+        ros::Duration ros_cost_time = ros_end_time - ros_begin_time;
+        cout << "ros_cost_time: " << ros_cost_time.toSec() << endl;
         flag_time = 3;
     }
 
@@ -142,51 +145,79 @@ void resultCallback(const move_base_msgs::MoveBaseActionResult &msg)
         {
             // ROS_INFO("goal: %f, %f, %f", goal.pose.position.x, goal.pose.position.y, goal.pose.position.z);
             // ROS_INFO("goal: %f, %f, %f, %f", goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z, goal.pose.orientation.w);
+            // cout << "goal" << goal.pose << endl;
             ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
             pub_goal.publish(goal);
-        }
-        else if (flag_cube == 1)
-        {
-            ROS_INFO("finish");
-            ros::shutdown();
-        }
-        else
-        {
-            line_num_read = read_pathrecord(getpath(record_path_end, "pospub").c_str(), position, line_num_read);
+            if (line_num_read == line_num_send)
+            {
+                if (flag_cube == 1 && flag_num == 1)
+                {
+                    sub_cube.shutdown();
+                    ros::shutdown();
+                    cout << "finish" << endl;
+                    return;
+                }
+                else if (flag_cube == 0 && flag_num == 1)
+                {
+                    line_num_read = read_pathrecord(getpath(record_path_end, "pospub").c_str(), position, line_num_read);
+                }
+            }
         }
     }
+    if (flag_cube == 1 && flag_num == 1)
+    {
+        line_num_send = line_num_read - 1;
+        // cout << "finish" << endl;
+    }
+    cout << "flag_num: " << flag_num << endl;
+    cout << "flag_cube: " << flag_cube << endl;
+    cout << "line_num_read: " << line_num_read << endl;
+    cout << "line_num_send: " << line_num_send << endl;
 }
 
 void numrecCallback(const std_msgs::String &msg)
 {
     string num = msg.data;
 
-    if (num.size() == 4)
+    if (flag_num == 0)
     {
-        for (int i = 0; i < 4; i++)
+        if (num.size() == 4)
         {
-            num[i] = num[i] - '0';
-            if (num[i] == tarpath)
+            for (int i = 0; i < 4; i++)
             {
-                flag_num = 1;
-                if (i == 0)
+                num[i] = num[i] - '0';
+                if (num[i] == tarpath)
                 {
-                    line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
+                    flag_num = 1;
+                    if (i == 0)
+                    {
+                        line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
+                        // cout << "i: " << i << endl;
+                        // cout << "read_path1" << endl;
+                    }
+                    else if (i == 1)
+                    {
+                        line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
+                        // cout << "i: " << i << endl;
+                        // cout << "read_path2" << endl;
+                    }
+                    else if (i == 2)
+                    {
+                        line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
+                        // cout << "i: " << i << endl;
+                        // cout << "read_path3" << endl;
+                    }
+                    else if (i == 3)
+                    {
+                        line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
+                        // cout << "i: " << i << endl;
+                        // cout << "read_path4" << endl;
+                    }
+                    sub_numrec.shutdown();
+                    line_num_read = read_pathrecord(getpath(record_path_end, "pospub").c_str(), position, line_num_read);
+                    // cout << "read_path_end" << endl;
+                    break;
                 }
-                else if (i == 1)
-                {
-                    line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
-                }
-                else if (i == 2)
-                {
-                    line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
-                }
-                else if (i == 3)
-                {
-                    line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
-                }
-                sub_numrec.shutdown();
-                break;
             }
         }
     }
@@ -194,10 +225,14 @@ void numrecCallback(const std_msgs::String &msg)
 
 void cubemeasureCallback(const std_msgs::String &msg)
 {
-    if (stof(msg.data) >= 0.9)
+    // cout << "cube_str: " << msg.data << endl;
+    // cout << "cube_float" << stof(msg.data) << endl;
+    // cout << "flag_cube: " << flag_cube << endl;
+    // cout << "flag_num: " << flag_num << endl;
+    if (stof(msg.data) >= 0.98 && stof(msg.data) <= 2.02 && flag_cube == 0 && flag_num == 1)
     {
         flag_cube = 1;
-        sub_cube.shutdown();
+        // sub_cube.shutdown();
     }
 }
 
@@ -212,31 +247,6 @@ int main(int argc, char **argv)
     line_num_read = read_pathrecord(getpath(record_path_begin, "pospub").c_str(), position, line_num_read);
     race_path_line_num = line_num_read;
 
-    // if (argv[1][0] == '1')
-    // {
-    //     line_num_read = read_pathrecord(getpath(record_path1, "pospub").c_str(), position, line_num_read);
-    //     ROS_INFO("cargothrough1");
-    // }
-    // else if (argv[1][0] == '2')
-    // {
-    //     line_num_read = read_pathrecord(getpath(record_path2, "pospub").c_str(), position, line_num_read);
-    //     ROS_INFO("cargothrough2");
-    // }
-    // else if (argv[1][0] == '3')
-    // {
-    //     line_num_read = read_pathrecord(getpath(record_path3, "pospub").c_str(), position, line_num_read);
-    //     ROS_INFO("cargothrough3");
-    // }
-    // else if (argv[1][0] == '4')
-    // {
-    //     line_num_read = read_pathrecord(getpath(record_path4, "pospub").c_str(), position, line_num_read);
-    //     ROS_INFO("cargothrough4");
-    // }
-    // else
-    // {
-    //     ROS_INFO("wrong input");
-    // }
-    // line_num_read = read_pathrecord(getpath(record_path_end, "pospub").c_str(), position, line_num_read);
     line_num_send = 0;
 
     ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1000);
@@ -253,7 +263,7 @@ int main(int argc, char **argv)
     line_num_send++;
     sub_result = nh.subscribe("/move_base/result", 1000, &resultCallback);
     sub_numrec = nh.subscribe("/numrec_result_str", 1000, &numrecCallback);
-    sub_cube = nh.subscribe("/cube", 1000, &cubemeasureCallback);
+    sub_cube = nh.subscribe("/cubemeasure_result_str", 1000, &cubemeasureCallback);
     ros::Rate loop_rate(500);
     while (!flag_begin)
     {

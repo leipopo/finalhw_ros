@@ -23,21 +23,22 @@ float numberfusion(float x_n_1, NF *nf)
     nf->E_est_n_1 = MAX(0.005, (1 - K_n) * nf->E_est_n_1);
     nf->x_n_1 = x_n;
     // nf->E_mea_n = 1-nf->E_est_n_1;
-    // cout << "k_n:" << K_n << endl;
-    // cout << "mea:" << nf->E_mea_n << endl;
-    // cout << "est:" << nf->E_est_n_1 << endl;
+    cout << "k_n:" << K_n << endl;
+    cout << "mea:" << nf->E_mea_n << endl;
+    cout << "est:" << nf->E_est_n_1 << endl;
     return x_n;
 }
 
 float getcubelength(float d[2], float cublen, NF *nf)
 {
-    if (d[0] >= 0.98 && d[1] >= 0.98 && d[0] < 2.02 && d[1] < 2.02)
+    if (d[0] >= 0.98 && d[1] >= 0.98 && d[0] < 2.02 && d[1] < 2.02 && fabsf(d[0] - d[1]) < 0.1)
     {
         cublen = numberfusion(d[0], nf);
         cublen = numberfusion(d[1], nf);
+        
         // cublen = numberfusion(MIN(d[0], d[1]), nf);
     }
-    else if (d[1] >= 0.98 && d[1] < 2.02)
+    else if (d[1] >= 0.98 && d[1] < 2.02 && fabsf(d[1] - cublen) < 0.1)
     {
         // if (fabsf(d[1] - cublen) < 0.1)
         // {
@@ -48,7 +49,7 @@ float getcubelength(float d[2], float cublen, NF *nf)
         //     cublen = numberfusion(cublen, nf);
         // }
     }
-    else if (d[0] >= 0.98 && d[0] < 2.02)
+    else if (d[0] >= 0.98 && d[0] < 2.02 && fabsf(d[0] - cublen) < 0.1)
     {
         // if (fabsf(d[0] - cublen) < 0.1)
         // {
@@ -114,7 +115,7 @@ Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
     return camera_point;
 }
 
-void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min)
+void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min, int thresh_green_min, int thresh_blue_green_max)
 {
     Mat imageWithout_Red_blue = rawimg.getMat().clone();
 
@@ -122,6 +123,10 @@ void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thr
     {
         for (int j = 0; j < imageWithout_Red_blue.cols; j++)
         {
+            if (imageWithout_Red_blue.at<cv::Vec3b>(i, j)[1] < thresh_green_min || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[0] > thresh_blue_green_max || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[2] > thresh_blue_green_max)
+            {
+                imageWithout_Red_blue.at<cv::Vec3b>(i, j)[1] = 0; // 绿色通道置零
+            }
             imageWithout_Red_blue.at<cv::Vec3b>(i, j)[2] = 0; // 红色通道置零
             imageWithout_Red_blue.at<cv::Vec3b>(i, j)[0] = 0; // 蓝色通道置零
         }
@@ -255,7 +260,7 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             i--;
             continue;
         }
-        if (contours[i].y < rect.y + rect.height / 2)
+        if (contours[i].y < rect.y + rect.height / 2 && contours[i].x > 10 && contours[i].y > 10&&contours[i].x<rawimg.cols-10)
         {
             upcontours.push_back(contours[i]); // 记录上边沿的点
         }
@@ -389,10 +394,6 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     Mat roi = depimg(rect);
     // cout << "roi is " << roi << endl;
     float minValue = numeric_limits<double>::max();
-    if (isnan(minValue) || isinf(minValue))
-    {
-        minValue = 100;
-    }
     // cout << "debug9" << endl;
     for (int i = 0; i < roi.rows; i++)
     {
@@ -439,19 +440,30 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
     namedWindow("threshimg", WINDOW_NORMAL);
     createTrackbar("thresh_max", "threshimg", 0, 255, NULL);
     createTrackbar("thresh_min", "threshimg", 0, 255, NULL);
+    createTrackbar("thresh_green_min", "threshimg", 0, 255, NULL);
+    createTrackbar("thresh_blue_green_max", "threshimg", 0, 255, NULL);
     int thresh_max = getTrackbarPos("thresh_max", "threshimg");
     int thresh_min = getTrackbarPos("thresh_min", "threshimg");
-
+    int thresh_green_min = getTrackbarPos("thresh_green_min", "threshimg");
+    int thresh_blue_green_max = getTrackbarPos("thresh_blue_green_max", "threshimg");
     if (thresh_max == 0)
     {
-        setTrackbarPos("thresh_max", "threshimg", 85);
+        setTrackbarPos("thresh_max", "threshimg", 120);
     }
     if (thresh_min == 0)
     {
         setTrackbarPos("thresh_min", "threshimg", 50);
     }
+    if (thresh_green_min == 0)
+    {
+        setTrackbarPos("thresh_green_min", "threshimg", 100);
+    }
+    if (thresh_blue_green_max == 0)
+    {
+        setTrackbarPos("thresh_blue_green_max", "threshimg", 150);
+    }
 
-    predispose(rawimg, threshimg, 3, thresh_max, thresh_min);
+    predispose(rawimg, threshimg, 3, thresh_max, thresh_min, thresh_green_min, thresh_blue_green_max);
 
     findContours(threshimg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
@@ -481,42 +493,48 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         // cout << "closestpair is " << closestpair << endl;
         if (!farthestpair.empty())
         {
-            line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
+
             depth_farpair[0] = getdepth(depimg, farthestpair[0], 4);
             depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
             // cout << "depth1:" << depth_farpair[0] << endl;
             // cout << "depth2:" << depth_farpair[1] << endl;
-            if (isnan(depth_farpair[0]) || isnan(depth_farpair[1]) || isinf(depth_farpair[0]) || isinf(depth_farpair[1]))
+            if (isnan(depth_farpair[0]) || isnan(depth_farpair[1]) || isinf(depth_farpair[0]) || isinf(depth_farpair[1]) || fabsf(depth_farpair[0] - depth_farpair[1]) > 0.2)
             {
-                cout << "depth error" << endl;
-                return cublen;
+                cout << "farpair depth error" << endl;
             }
-            pixel2camera_point_farpair[0] = pixel2camera(farthestpair[0], depth_farpair[0], camerargbinfo);
-            pixel2camera_point_farpair[1] = pixel2camera(farthestpair[1], depth_farpair[1], camerargbinfo);
-            // cout << "far1:" << pixel2camera_point_farpair[0] << endl;
-            // cout << "far2:" << pixel2camera_point_farpair[1] << endl;
-            dist[0] = norm(pixel2camera_point_farpair[0] - pixel2camera_point_farpair[1]);
-            putText(rawimg, to_string(dist[0]), (farthestpair[0] + farthestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+            else
+            {
+                pixel2camera_point_farpair[0] = pixel2camera(farthestpair[0], depth_farpair[0], camerargbinfo);
+                pixel2camera_point_farpair[1] = pixel2camera(farthestpair[1], depth_farpair[1], camerargbinfo);
+                // cout << "far1:" << pixel2camera_point_farpair[0] << endl;
+                // cout << "far2:" << pixel2camera_point_farpair[1] << endl;
+                dist[0] = norm(pixel2camera_point_farpair[0] - pixel2camera_point_farpair[1]);
+                putText(rawimg, to_string(dist[0]), (farthestpair[0] + farthestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+                line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
+            }
         }
         if (!closestpair.empty())
         {
-            line(rawimg, closestpair[0], closestpair[1], Scalar(255, 255, 255), 2);
+
             depth_closepair[0] = getdepth(depimg, closestpair[0], 4);
             depth_closepair[1] = getdepth(depimg, closestpair[1], 4);
             // cout << "depth1:" << depth_closepair[0] << endl;
             // cout << "depth2:" << depth_closepair[1] << endl;
-            if (isnan(depth_closepair[0]) || isnan(depth_closepair[1]) || isinf(depth_closepair[0]) || isinf(depth_closepair[1]))
+            if (isnan(depth_closepair[0]) || isnan(depth_closepair[1]) || isinf(depth_closepair[0]) || isinf(depth_closepair[1]) || fabsf(depth_closepair[0] - depth_closepair[1]) > 0.2)
             {
-                cout << "depth error" << endl;
-                return cublen;
+                cout << "closepair depth error" << endl;
+                // return cublen;
             }
-
-            pixel2camera_point_closepair[0] = pixel2camera(closestpair[0], depth_closepair[0], camerargbinfo);
-            pixel2camera_point_closepair[1] = pixel2camera(closestpair[1], depth_closepair[1], camerargbinfo);
-            // cout << "close1:" << pixel2camera_point_closepair[0] << endl;
-            // cout << "close2:" << pixel2camera_point_closepair[1] << endl;
-            dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
-            putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+            else
+            {
+                pixel2camera_point_closepair[0] = pixel2camera(closestpair[0], depth_closepair[0], camerargbinfo);
+                pixel2camera_point_closepair[1] = pixel2camera(closestpair[1], depth_closepair[1], camerargbinfo);
+                // cout << "close1:" << pixel2camera_point_closepair[0] << endl;
+                // cout << "close2:" << pixel2camera_point_closepair[1] << endl;
+                dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
+                putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+                line(rawimg, closestpair[0], closestpair[1], Scalar(255, 255, 255), 2);
+            }
         }
 
         vector<KeyPoint> keypoints;
@@ -524,14 +542,14 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         {
             keypoints.push_back(KeyPoint(farthestpair[i], 1));
             drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            putText(rawimg, to_string(farthestpair[i].x) + "," + to_string(farthestpair[i].y) + "num: " + to_string(i) + "dep: " + to_string(depth_farpair[i]), farthestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+            putText(rawimg, to_string(farthestpair[i].x) + "," + to_string(farthestpair[i].y) + "dep: " + to_string(depth_farpair[i]), farthestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
         }
 
         for (int i = 0; i < closestpair.size(); i++)
         {
             keypoints.push_back(KeyPoint(closestpair[i], 1));
             drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            putText(rawimg, to_string(closestpair[i].x) + "," + to_string(closestpair[i].y) + "num: " + to_string(i) + "dep: " + to_string(depth_closepair[i]), closestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+            putText(rawimg, to_string(closestpair[i].x) + "," + to_string(closestpair[i].y) + "dep: " + to_string(depth_closepair[i]), closestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
         }
 
         // cout << "debug1" << endl;
@@ -555,6 +573,17 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         // {
         //     imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
         // }
+
+        if (nf->E_est_n_1 <= 0.005 && fabsf(dist[0] - dist[1]) < 0.05)
+        {
+            imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
+            cout << "img saved" << endl;
+            ros::NodeHandle nh;
+            ros::Publisher pub = nh.advertise<std_msgs::String>("cubemeasure_result_str", 1);
+            std_msgs::String msg;
+            msg.data = to_string(cublen);
+            pub.publish(msg);
+        }
 
         return fabsf(cublen);
     }
