@@ -16,6 +16,9 @@ ros::Subscriber sub_camerargbinfo;
 ros::Subscriber sub_depth;
 ros::Subscriber sub_rgb;
 
+/*
+ *功能：简易的滤波器
+ */
 float numberfusion(float x_n_1, NF *nf)
 {
     float K_n = nf->E_est_n_1 / (nf->E_est_n_1 + nf->E_mea_n);
@@ -23,19 +26,22 @@ float numberfusion(float x_n_1, NF *nf)
     nf->E_est_n_1 = MAX(0.005, (1 - K_n) * nf->E_est_n_1);
     nf->x_n_1 = x_n;
     // nf->E_mea_n = 1-nf->E_est_n_1;
-    cout << "k_n:" << K_n << endl;
-    cout << "mea:" << nf->E_mea_n << endl;
-    cout << "est:" << nf->E_est_n_1 << endl;
+    // cout << "k_n:" << K_n << endl;
+    // cout << "mea:" << nf->E_mea_n << endl;
+    // cout << "est:" << nf->E_est_n_1 << endl;
     return x_n;
 }
 
+/*
+ *功能：计算立方体的边长
+ */
 float getcubelength(float d[2], float cublen, NF *nf)
 {
     if (d[0] >= 0.98 && d[1] >= 0.98 && d[0] < 2.02 && d[1] < 2.02 && fabsf(d[0] - d[1]) < 0.1)
     {
         cublen = numberfusion(d[0], nf);
         cublen = numberfusion(d[1], nf);
-        
+
         // cublen = numberfusion(MIN(d[0], d[1]), nf);
     }
     else if (d[1] >= 0.98 && d[1] < 2.02 && fabsf(d[1] - cublen) < 0.1)
@@ -70,6 +76,9 @@ float getcubelength(float d[2], float cublen, NF *nf)
     return cublen;
 }
 
+/*
+ *功能：rgb图像回调函数
+ */
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
@@ -83,6 +92,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     }
 }
 
+/*
+ *功能：深度图像回调函数
+ */
 void depthCallback(const sensor_msgs::ImageConstPtr &msg)
 {
     cv_bridge::CvImagePtr cv_ptr;
@@ -96,12 +108,22 @@ void depthCallback(const sensor_msgs::ImageConstPtr &msg)
     }
 }
 
+/*
+ *功能：rgb相机内参回调函数
+ */
 void camerargbinfoCallback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
     camerargbinfo = Mat(3, 3, CV_64FC1, (void *)msg->K.data()).clone();
     sub_camerargbinfo.shutdown();
 }
 
+/*
+ *功能：通过相机内参数和深度信息计算相机坐标系下点的坐标
+ *输入1：像素坐标
+ *输入2：深度信息
+ *输入3：相机内参
+ *输出：相机坐标系下点的坐标
+ */
 Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
 {
     float fx = camerainfo.at<double>(0, 0);
@@ -115,7 +137,17 @@ Point3f pixel2camera(Point2f pixel, float depth, Mat camerainfo)
     return camera_point;
 }
 
-void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min, int thresh_green_min, int thresh_blue_green_max)
+/*
+ *功能：预处理图像
+ *输入1：原始图像
+ *输入2：输出图像
+ *输入3：膨胀/腐蚀边界值
+ *输入4：最大灰度阈值
+ *输入5：最小灰度阈值
+ *输入6：绿色通道最小阈值，当绿色通道小于该值时，将其绿色通道置为0
+ *输入7：蓝色/红色通道最大阈值，当蓝色/红色通道大于该值时，将其绿色通道也置为0
+ */
+void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thresh_max, int thresh_min, int thresh_green_min, int thresh_blue_red_max)
 {
     Mat imageWithout_Red_blue = rawimg.getMat().clone();
 
@@ -123,7 +155,7 @@ void predispose(InputArray rawimg, OutputArray outimg, int border_value, int thr
     {
         for (int j = 0; j < imageWithout_Red_blue.cols; j++)
         {
-            if (imageWithout_Red_blue.at<cv::Vec3b>(i, j)[1] < thresh_green_min || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[0] > thresh_blue_green_max || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[2] > thresh_blue_green_max)
+            if (imageWithout_Red_blue.at<cv::Vec3b>(i, j)[1] < thresh_green_min || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[0] > thresh_blue_red_max || imageWithout_Red_blue.at<cv::Vec3b>(i, j)[2] > thresh_blue_red_max)
             {
                 imageWithout_Red_blue.at<cv::Vec3b>(i, j)[1] = 0; // 绿色通道置零
             }
@@ -157,6 +189,11 @@ float p2l_distance(Point2f point1, Point2f point2, Point2f point)
     return distance;
 }
 
+/*
+ *功能：寻找最大轮廓
+ *输入：轮廓集合
+ *输出：最大轮廓
+ */
 void findmaxsizeContours(vector<vector<Point>> contours, vector<Point> &maxsizeContours)
 {
     int maxsize = 0;
@@ -170,16 +207,21 @@ void findmaxsizeContours(vector<vector<Point>> contours, vector<Point> &maxsizeC
     }
 }
 
+/*
+ *功能：数值滤波筛选轮廓特征点
+ *输入：轮廓特征点集合
+ *输出：滤波后的轮廓特征点集合
+ */
 vector<Point> contoursfilter(vector<vector<Point>> contours)
 {
 
     vector<Point> simplifiedcontours;
     findmaxsizeContours(contours, simplifiedcontours);
-    approxPolyDP(simplifiedcontours, simplifiedcontours, 5, true);
+    approxPolyDP(simplifiedcontours, simplifiedcontours, 5, true); // 轮廓点数目减少
     vector<int> hull;
-    convexHull(simplifiedcontours, hull);
+    convexHull(simplifiedcontours, hull); // 凸包索引
     vector<Point> hull_points;
-    for (int i = 0; i < hull.size(); i++)
+    for (int i = 0; i < hull.size(); i++) //
     {
         hull_points.push_back(simplifiedcontours[hull[i]]);
     }
@@ -197,6 +239,11 @@ vector<Point> contoursfilter(vector<vector<Point>> contours)
     return simplifiedcontours;
 }
 
+/*
+ *功能：寻找最高点
+ *输入：轮廓特征点集合
+ *输出：最高点
+ */
 Point findheighestPoint(vector<Point> contours)
 {
     Point heighestPoint = contours[0];
@@ -210,6 +257,11 @@ Point findheighestPoint(vector<Point> contours)
     return heighestPoint;
 }
 
+/*
+ *功能：寻找最低点
+ *输入：轮廓特征点集合
+ *输出：最低点
+ */
 Point findlowestPoint(vector<Point> contours)
 {
     Point lowestPoint = contours[0];
@@ -223,6 +275,11 @@ Point findlowestPoint(vector<Point> contours)
     return lowestPoint;
 }
 
+/*
+ *功能：寻找点集平均高度
+ *输入：轮廓特征点集合
+ *输出：平均高度
+ */
 float findaverheight(vector<Point> contours)
 {
     float aver_height = 0;
@@ -234,6 +291,11 @@ float findaverheight(vector<Point> contours)
     return aver_height;
 }
 
+/*
+ *功能：简化点集后此函数用于将点集分为上点集和下点集，并进行数值滤波，将角点配对
+ *输入：轮廓特征点集合
+ *输出：最远点对，最近点对
+ */
 void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector<Point> &closestpair, Mat &rawimg)
 {
 
@@ -260,7 +322,7 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
             i--;
             continue;
         }
-        if (contours[i].y < rect.y + rect.height / 2 && contours[i].x > 10 && contours[i].y > 10&&contours[i].x<rawimg.cols-10)
+        if (contours[i].y < rect.y + rect.height / 2 && contours[i].x > 10 && contours[i].y > 10 && contours[i].x < rawimg.cols - 10)
         {
             upcontours.push_back(contours[i]); // 记录上边沿的点
         }
@@ -361,6 +423,7 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
         }
     }
 
+    // 若远点对和近点对为空，则将中间距离的点对赋值给空点对
     if ((farthestpair.empty() || (closestpair.empty())))
     {
         for (int i = 0; i < upcontours.size(); i++)
@@ -388,11 +451,16 @@ void pairingContours(vector<Point> contours, vector<Point> &farthestpair, vector
     }
 }
 
+/*
+ *功能：获取某点的深度值
+ *输入：深度图，目标点，搜索范围
+ *输出：目标点的深度值
+ */
 float getdepth(Mat depimg, Point tarpoint, int size)
 {
     Rect rect(MIN(MAX(1, tarpoint.x - size / 2), depimg.cols - size - 1), MIN(MAX(1, tarpoint.y - size / 2), depimg.rows - size - 1), size, size);
     Mat roi = depimg(rect);
-    // cout << "roi is " << roi << endl;
+    cout << "roi is " << roi << endl;
     float minValue = numeric_limits<double>::max();
     // cout << "debug9" << endl;
     for (int i = 0; i < roi.rows; i++)
@@ -416,6 +484,9 @@ float getdepth(Mat depimg, Point tarpoint, int size)
     return depth;
 }
 
+/*
+ *功能：方块长度测量
+ */
 float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
 {
     if (isinf(cublen) || isnan(cublen))
@@ -437,15 +508,16 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
     Point3f pixel2camera_point_closepair[2];
     float dist[2] = {0};
 
+    // 创建调整阈值的滑动条和灰度图像窗口
     namedWindow("threshimg", WINDOW_NORMAL);
     createTrackbar("thresh_max", "threshimg", 0, 255, NULL);
     createTrackbar("thresh_min", "threshimg", 0, 255, NULL);
     createTrackbar("thresh_green_min", "threshimg", 0, 255, NULL);
-    createTrackbar("thresh_blue_green_max", "threshimg", 0, 255, NULL);
+    createTrackbar("thresh_blue_red_max", "threshimg", 0, 255, NULL);
     int thresh_max = getTrackbarPos("thresh_max", "threshimg");
     int thresh_min = getTrackbarPos("thresh_min", "threshimg");
     int thresh_green_min = getTrackbarPos("thresh_green_min", "threshimg");
-    int thresh_blue_green_max = getTrackbarPos("thresh_blue_green_max", "threshimg");
+    int thresh_blue_red_max = getTrackbarPos("thresh_blue_red_max", "threshimg");
     if (thresh_max == 0)
     {
         setTrackbarPos("thresh_max", "threshimg", 120);
@@ -458,22 +530,24 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
     {
         setTrackbarPos("thresh_green_min", "threshimg", 100);
     }
-    if (thresh_blue_green_max == 0)
+    if (thresh_blue_red_max == 0)
     {
-        setTrackbarPos("thresh_blue_green_max", "threshimg", 150);
+        setTrackbarPos("thresh_blue_red_max", "threshimg", 150);
     }
 
-    predispose(rawimg, threshimg, 3, thresh_max, thresh_min, thresh_green_min, thresh_blue_green_max);
+    // 预处理图像
+    predispose(rawimg, threshimg, 3, thresh_max, thresh_min, thresh_green_min, thresh_blue_red_max);
 
+    // 寻找轮廓
     findContours(threshimg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
+    // 轮廓为空或者轮廓太小则返回
     if (contours.empty())
     {
         cout << "contours empty" << endl;
         return cublen;
     }
-
-    else
+    else // 轮廓数值滤波及配对
     {
         vector<Point> maxsizeContours;
         findmaxsizeContours(contours, maxsizeContours);
@@ -483,17 +557,21 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             return cublen;
         }
 
+        // 轮廓数值滤波
         vector<Point> target_contours;
         target_contours = contoursfilter(contours);
 
         // cout << "debug" << endl;
 
+        // 配对最远角点点对和最近角点点对
         pairingContours(target_contours, farthestpair, closestpair, rawimg);
         // cout << "farthestpair is " << farthestpair << endl;
         // cout << "closestpair is " << closestpair << endl;
+
+        // 计算角点点对对应的边长
         if (!farthestpair.empty())
         {
-
+            // 获取远角点点对的深度值
             depth_farpair[0] = getdepth(depimg, farthestpair[0], 4);
             depth_farpair[1] = getdepth(depimg, farthestpair[1], 4);
             // cout << "depth1:" << depth_farpair[0] << endl;
@@ -504,18 +582,21 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             }
             else
             {
+                // 计算相机坐标系下的角点点对坐标
                 pixel2camera_point_farpair[0] = pixel2camera(farthestpair[0], depth_farpair[0], camerargbinfo);
                 pixel2camera_point_farpair[1] = pixel2camera(farthestpair[1], depth_farpair[1], camerargbinfo);
                 // cout << "far1:" << pixel2camera_point_farpair[0] << endl;
                 // cout << "far2:" << pixel2camera_point_farpair[1] << endl;
+                // 计算角点点对对应的边长
                 dist[0] = norm(pixel2camera_point_farpair[0] - pixel2camera_point_farpair[1]);
+                // 绘制边长图像和标注距离
                 putText(rawimg, to_string(dist[0]), (farthestpair[0] + farthestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
                 line(rawimg, farthestpair[0], farthestpair[1], Scalar(255, 255, 255), 2);
             }
         }
         if (!closestpair.empty())
         {
-
+            // 获取近角点点对的深度值
             depth_closepair[0] = getdepth(depimg, closestpair[0], 4);
             depth_closepair[1] = getdepth(depimg, closestpair[1], 4);
             // cout << "depth1:" << depth_closepair[0] << endl;
@@ -527,16 +608,19 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             }
             else
             {
+                // 计算相机坐标系下的角点点对坐标
                 pixel2camera_point_closepair[0] = pixel2camera(closestpair[0], depth_closepair[0], camerargbinfo);
                 pixel2camera_point_closepair[1] = pixel2camera(closestpair[1], depth_closepair[1], camerargbinfo);
                 // cout << "close1:" << pixel2camera_point_closepair[0] << endl;
                 // cout << "close2:" << pixel2camera_point_closepair[1] << endl;
+                // 计算角点点对对应的边长
                 dist[1] = norm(pixel2camera_point_closepair[0] - pixel2camera_point_closepair[1]);
+                // 绘制边长图像和标注距离
                 putText(rawimg, to_string(dist[1]), (closestpair[0] + closestpair[1]) / 2, FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
                 line(rawimg, closestpair[0], closestpair[1], Scalar(255, 255, 255), 2);
             }
         }
-
+        // 绘制角点点对
         vector<KeyPoint> keypoints;
         for (int i = 0; i < farthestpair.size(); i++)
         {
@@ -544,7 +628,6 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
             drawKeypoints(rawimg, keypoints, rawimg, Scalar(0, 255, 0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
             putText(rawimg, to_string(farthestpair[i].x) + "," + to_string(farthestpair[i].y) + "dep: " + to_string(depth_farpair[i]), farthestpair[i], FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
         }
-
         for (int i = 0; i < closestpair.size(); i++)
         {
             keypoints.push_back(KeyPoint(closestpair[i], 1));
@@ -553,6 +636,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         }
 
         // cout << "debug1" << endl;
+        // 处理输出结果
         if (farthestpair.empty() && closestpair.empty())
         {
             cout << "no pair" << endl;
@@ -573,7 +657,7 @@ float cubemeasure(Mat rawimg, Mat depimg, float cublen, NF *nf)
         // {
         //     imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);
         // }
-
+        //判断是否保存图像
         if (nf->E_est_n_1 <= 0.005 && fabsf(dist[0] - dist[1]) < 0.05)
         {
             imwrite(getpath(outputimg_path, "cubemeasure"), rawimg);

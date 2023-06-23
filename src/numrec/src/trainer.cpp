@@ -1,14 +1,17 @@
 #include "numrec.hpp"
 
+/*
+ *功能：训练数字识别模型
+ *输入：无
+ */
 int main(int argc, const char **argv)
 {
-
     vector<string> path;
     vector<int> label;
     int nline = 1;
     string imgpath;
     ifstream cfgfile;
-    cfgfile.open(getpath(traincfg_path, "numrec").c_str(), ios::in);
+    cfgfile.open(getpath(traincfg_path, "numrec").c_str(), ios::in); // 打开训练索引文件
     while (!cfgfile.eof())
     {
         if (nline % 2 == 1)
@@ -82,7 +85,7 @@ int main(int argc, const char **argv)
         svm->save(getpath(svm_path_result, "numrec").c_str());
         cout << "svm trained" << endl;
     }
-    else if (argv[1][0] == 'k')
+    else if (argv[1][0] == 'k') // knn方法
     {
 
         deletefile(getpath(knn_path_result, "numrec").c_str());

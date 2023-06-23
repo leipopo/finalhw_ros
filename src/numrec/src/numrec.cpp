@@ -1,5 +1,9 @@
 #include "numrec.hpp"
 
+/*
+ *功能:数字识别
+ *输入:Mat raw_tarimg
+ */
 numrec_result num_rec(Mat raw_tarimg)
 {
     numrec_result result;
@@ -52,11 +56,12 @@ numrec_result num_rec(Mat raw_tarimg)
             fea = roi_resized.reshape(1, 1);
             fea.convertTo(fea, CV_32FC1);
 
+            // 识别数字
             int result_num = knn->predict(fea);
-
             result_num_position[i][0] = knn->predict(fea);
             result_num_position[i][1] = rect.x;
 
+            // 画数字
             putText(raw_tarimg, to_string(result_num_position[i][0]), Point(rect.x, rect.y - 5), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(255, 0, 255), 2, 8, 0);
             // cout << "num: " << result_num_position[i][0] << endl;
         }
@@ -66,7 +71,7 @@ numrec_result num_rec(Mat raw_tarimg)
             result_num_position[i][1] = 0;
         }
     }
-
+    // 排序
     for (int i = 0; i < contours.size(); i++)
     {
         for (int j = 0; j < contours.size() - 1; j++)
@@ -83,7 +88,7 @@ numrec_result num_rec(Mat raw_tarimg)
             }
         }
     }
-
+    // 打包识别结果
     for (int i = 0; i < contours.size(); i++)
     {
         if (result_num_position[i][0] != 0)
@@ -123,26 +128,30 @@ numrec_result result;
 Mat raw_tarimg;
 static const char WINDOW[] = "numrec";
 
+/*
+ *功能：订阅图像话题的回调函数，识别数字
+ */
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
 
     raw_tarimg = cv_bridge::toCvShare(msg, "bgr8")->image;
-    numrec_result result = num_rec(raw_tarimg);
+    numrec_result result = num_rec(raw_tarimg); // 识别数字
     // cout << "result_str: " << result.result_str << endl;
     imshow(WINDOW, result.img);
     ros::NodeHandle nh;
     ros::Publisher pub = nh.advertise<std_msgs::String>("numrec_result_str", 1);
 
     // cout << "result.result_str.size: " << result.result_str.size() << endl;
+    // 处理输出结果
     if (result.result_str.size() == 4)
     {
         int result_error_flag = 0;
         // cout << "result.result_str: " << result.result_str << endl;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 4; i++) // 判读是否有重复数字，有则为误识别，直接返回不发布结果
         {
-        //     cout << "i: " << i << endl;
-        //     cout << "result.result_str[i]: " << result.result_str[i] << endl;
-            for (int j = i+1; j < 4; j++)
+            //     cout << "i: " << i << endl;
+            //     cout << "result.result_str[i]: " << result.result_str[i] << endl;
+            for (int j = i + 1; j < 4; j++)
             {
                 if (result.result_str[i] == result.result_str[j])
                 {

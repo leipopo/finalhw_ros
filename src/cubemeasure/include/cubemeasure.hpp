@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <algorithm>
 
-#include <ros/ros.h>
-#include <std_msgs/String.h>
+// #include <ros/ros.h>
+// #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>

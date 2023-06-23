@@ -1,5 +1,9 @@
 #include "numrec.hpp"
 
+/*
+ *功能：生成训练集索引文件
+ *输入：数字种类总数，每个数字的图片数量
+ */
 int main(int argc, char **argv)
 {
     int numofnums = atoi(argv[1]);
